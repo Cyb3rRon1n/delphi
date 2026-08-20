@@ -8,15 +8,19 @@ export async function isAvailable(config = {}) {
   return Boolean(config.baseUrl && config.apiKey);
 }
 
-// imageDataUrl, when present, uses the standard OpenAI vision content-array
-// shape ({type: "image_url"}) — supported by OpenAI, OpenRouter, and most
-// OpenAI-compatible endpoints when the chosen model is vision-capable.
-export async function generate(prompt, config = {}, imageDataUrl = null) {
+// images, when present, is an array of data URLs — uses the standard OpenAI
+// vision content-array shape ({type: "image_url"}, one entry per image),
+// supported by OpenAI, OpenRouter, and most OpenAI-compatible endpoints
+// when the chosen model is vision-capable.
+export async function generate(prompt, config = {}, images = null) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error("Custom provider requires baseUrl and apiKey (set in Options).");
   }
-  const content = imageDataUrl
-    ? [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: imageDataUrl } }]
+  const content = images?.length
+    ? [
+        { type: "text", text: prompt },
+        ...images.map((url) => ({ type: "image_url", image_url: { url } })),
+      ]
     : prompt;
 
   const res = await fetch(`${config.baseUrl}/chat/completions`, {

@@ -109,7 +109,7 @@ async function explainText(text, modeOverride = null) {
 
 async function explainImage(imageDataUrl) {
   const settings = await getSettings();
-  return runGenerate(settings.mode, () => generate(buildImagePrompt(settings.mode), imageDataUrl));
+  return runGenerate(settings.mode, () => generate(buildImagePrompt(settings.mode), [imageDataUrl]));
 }
 
 // Every explanation, from any of the three input paths, lands here too —
@@ -152,6 +152,48 @@ async function runForImage(tabId, imageDataUrl) {
 // The reply can list several questions, so it's rendered as raw text
 // (explanation only, no single answer to extract) rather than through
 // parseReply, which assumes one trailing "Answer:" line.
+// captureVisibleTab only ever grabs the visible viewport — there's no
+// single-call "whole scrollable page" screenshot API. So: scroll to each
+// section, capture, repeat, then restore the original scroll position.
+// Capped at MAX_SHOTS — more images means proportionally longer processing
+// on a local model, which is already the slow part (see withKeepAlive).
+const MAX_PAGE_CHECK_SHOTS = 8;
+
+async function getPageMetrics(tabId) {
+  const [{ result }] = await api.scripting.executeScript({
+    target: { tabId },
+    func: () => ({
+      scrollHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+      originalScrollY: window.scrollY,
+    }),
+  });
+  return result;
+}
+
+async function scrollTo(tabId, y) {
+  await api.scripting.executeScript({ target: { tabId }, func: (y) => window.scrollTo(0, y), args: [y] });
+}
+
+async function captureFullPage(tabId, windowId) {
+  const { scrollHeight, viewportHeight, originalScrollY } = await getPageMetrics(tabId);
+
+  const positions = [0];
+  while (positions[positions.length - 1] + viewportHeight < scrollHeight && positions.length < MAX_PAGE_CHECK_SHOTS) {
+    positions.push(positions[positions.length - 1] + viewportHeight);
+  }
+
+  const shots = [];
+  for (const y of positions) {
+    await scrollTo(tabId, y);
+    await new Promise((r) => setTimeout(r, 500)); // let the page repaint/lazy-load, and stay under Chrome's ~2/sec captureVisibleTab rate limit
+    shots.push(await api.tabs.captureVisibleTab(windowId, { format: "png" }));
+  }
+
+  await scrollTo(tabId, originalScrollY);
+  return shots;
+}
+
 async function checkPage(tabId) {
   await ensureContentScript(tabId);
   await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
@@ -159,8 +201,8 @@ async function checkPage(tabId) {
   let result;
   try {
     const { windowId } = await api.tabs.get(tabId);
-    const shot = await api.tabs.captureVisibleTab(windowId, { format: "png" });
-    const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shot));
+    const shots = await captureFullPage(tabId, windowId);
+    const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
     result = { mode: settings.mode, explanation: reply, answer: null };
   } catch (err) {
     result = { error: err.message };

@@ -16,15 +16,16 @@ export async function isAvailable(config = {}) {
   }
 }
 
-// imageDataUrl, when present, is a "data:image/...;base64,..." string —
+// images, when present, is an array of "data:image/...;base64,..." strings —
 // Ollama's /api/generate wants raw base64 with no data: prefix, and a
-// vision-capable model (e.g. llava, qwen2-vl, llama3.2-vision).
-export async function generate(prompt, config = {}, imageDataUrl = null) {
+// vision-capable model (e.g. llava, qwen2-vl, llama3.2-vision). Its images
+// field is already an array, so multiple screenshots need no extra work here.
+export async function generate(prompt, config = {}, images = null) {
   const baseUrl = config.baseUrl || DEFAULTS.baseUrl;
   const model = config.model || DEFAULTS.model;
 
   const body = { model, prompt, stream: false };
-  if (imageDataUrl) body.images = [imageDataUrl.replace(/^data:.*?;base64,/, "")];
+  if (images?.length) body.images = images.map((url) => url.replace(/^data:.*?;base64,/, ""));
 
   const res = await fetch(`${baseUrl}/api/generate`, {
     method: "POST",

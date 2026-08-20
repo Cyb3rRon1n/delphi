@@ -46,19 +46,23 @@ export function buildImagePrompt(mode = MODES.EXPLAIN) {
 export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
   const preamble =
     "You are a study assistant helping a learner practice for themselves " +
-    "(this is self-study, not a live exam). The attached image is a screenshot " +
-    "of a page that may contain one or more practice questions (e.g. a multi-" +
-    "question knowledge check). Find every question visible in the image.";
+    "(this is self-study, not a live exam). The attached images are screenshots " +
+    "covering an entire page from top to bottom (several images only because the " +
+    "page needed scrolling to capture fully — treat them as one continuous page, " +
+    "not separate unrelated images) that may contain one or more practice " +
+    "questions (e.g. a multi-question knowledge check). Find every question " +
+    "visible across all of the images, without duplicating a question that " +
+    "happens to appear in more than one image due to overlap at the edges.";
 
   const instruction =
     mode === MODES.ANSWER_ONLY
       ? "For each question, on its own line write a short label for the question and its " +
         "answer, e.g. '1. <short label> — Answer: <answer>'. No explanations. If there are " +
-        "no questions in the image, say so plainly."
+        "no questions across the images, say so plainly."
       : "For each question, briefly explain the reasoning — why the correct choice is right " +
         "and briefly why the other choices are wrong — then end that question's entry with " +
         "'Answer: <the answer>' on its own line. Number each question clearly. If there are " +
-        "no questions in the image, say so plainly.";
+        "no questions across the images, say so plainly.";
 
   return `${preamble}\n\n${instruction}`;
 }

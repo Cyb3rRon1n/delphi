@@ -18,9 +18,10 @@ export async function getSettings() {
   return stored;
 }
 
-export async function generate(prompt, imageDataUrl = null) {
+// images: null, or an array of data URLs (one per screenshot/region).
+export async function generate(prompt, images = null) {
   const settings = await getSettings();
   const provider = PROVIDERS[settings.providerId] || chromeAi;
   const config = settings.providerConfig?.[provider.id] || {};
-  return provider.generate(prompt, config, imageDataUrl);
+  return provider.generate(prompt, config, images);
 }
