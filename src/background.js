@@ -74,9 +74,24 @@ api.commands.onCommand.addListener(async (command) => {
 // Shared by every entry point. Never throws — a provider/quota failure
 // becomes a normal {error} result so a batch loop (see DELPHI_EXPLAIN_TEXT
 // below) can keep going instead of aborting on one bad question.
+//
+// MV3 kills this service worker after ~30s idle — confirmed live (DevTools
+// showed "service worker (inactive)") mid-request on a slow local model,
+// which silently abandons whatever was awaited with no error and no result,
+// ever. A call to any extension API resets that idle timer, so ping one
+// every 20s (comfortably under 30s) for as long as the real call is running.
+async function withKeepAlive(run) {
+  const interval = setInterval(() => api.storage.session.get("_ping"), 20000);
+  try {
+    return await run();
+  } finally {
+    clearInterval(interval);
+  }
+}
+
 async function runGenerate(mode, run) {
   try {
-    const reply = await run();
+    const reply = await withKeepAlive(run);
     return { mode, ...parseReply(reply) };
   } catch (err) {
     return { error: err.message };
@@ -145,7 +160,7 @@ async function checkPage(tabId) {
   try {
     const { windowId } = await api.tabs.get(tabId);
     const shot = await api.tabs.captureVisibleTab(windowId, { format: "png" });
-    const reply = await generate(buildPageCheckPrompt(settings.mode), shot);
+    const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shot));
     result = { mode: settings.mode, explanation: reply, answer: null };
   } catch (err) {
     result = { error: err.message };
