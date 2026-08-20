@@ -10,8 +10,11 @@ const DEFAULT_SETTINGS = {
   providerConfig: {}, // per-provider settings, keyed by provider id
 };
 
+// browser.* (Firefox, promise-only) when present, else chrome.* (Chrome/Brave).
+const api = globalThis.browser ?? chrome;
+
 export async function getSettings() {
-  const stored = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+  const stored = await api.storage.sync.get(DEFAULT_SETTINGS);
   return stored;
 }
 

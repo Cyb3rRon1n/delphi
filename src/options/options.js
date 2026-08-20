@@ -1,3 +1,6 @@
+// browser.* (Firefox, promise-only) when present, else chrome.* (Chrome/Brave).
+const api = globalThis.browser ?? chrome;
+
 const DEFAULTS = {
   providerId: "chrome-ai",
   mode: "explain",
@@ -8,7 +11,7 @@ const DEFAULTS = {
 };
 
 async function load() {
-  const settings = await chrome.storage.sync.get(DEFAULTS);
+  const settings = await api.storage.sync.get(DEFAULTS);
 
   document.querySelector(`input[name="mode"][value="${settings.mode}"]`).checked = true;
   document.querySelector(`input[name="providerId"][value="${settings.providerId}"]`).checked = true;
@@ -39,7 +42,7 @@ async function save() {
     },
   };
 
-  await chrome.storage.sync.set({ mode, providerId, providerConfig });
+  await api.storage.sync.set({ mode, providerId, providerConfig });
   const status = document.getElementById("status");
   status.textContent = "Saved.";
   setTimeout(() => (status.textContent = ""), 1500);

@@ -1,9 +1,12 @@
 // Injected on demand (context menu / keyboard shortcut / popup toggle) —
 // never runs automatically on page load, and is idempotent against
-// re-injection (chrome.scripting.executeScript re-runs this whole file).
+// re-injection (api.scripting.executeScript re-runs this whole file).
 (() => {
+  // browser.* (Firefox, promise-only) when present, else chrome.* (Chrome/Brave).
+  const api = globalThis.browser ?? chrome;
+
   if (window.__delphiInjected) {
-    chrome.runtime.onMessage.addListener(window.__delphiListener);
+    api.runtime.onMessage.addListener(window.__delphiListener);
     return;
   }
   window.__delphiInjected = true;
@@ -132,7 +135,7 @@
   const explainAllBtn = autoShadow.querySelector(".explain-all");
   autoShadow.querySelector(".stop").addEventListener("click", () => {
     stopAuto();
-    chrome.runtime.sendMessage({ type: "DELPHI_AUTO_STOPPED_LOCALLY" });
+    api.runtime.sendMessage({ type: "DELPHI_AUTO_STOPPED_LOCALLY" });
   });
 
   let detectFns = null;
@@ -169,7 +172,7 @@
     const text = el.innerText ?? el.textContent ?? "";
     let result;
     try {
-      result = await chrome.runtime.sendMessage({ type: "DELPHI_EXPLAIN_TEXT", text });
+      result = await api.runtime.sendMessage({ type: "DELPHI_EXPLAIN_TEXT", text });
     } catch (err) {
       result = { error: String(err?.message ?? err) };
     }
@@ -243,7 +246,7 @@
   async function startAuto() {
     autoHost.style.display = "block";
     if (!detectFns) {
-      detectFns = await import(chrome.runtime.getURL("src/lib/detect-questions.js"));
+      detectFns = await import(api.runtime.getURL("src/lib/detect-questions.js"));
     }
     scan();
     if (!autoObserver) {
@@ -348,7 +351,7 @@
       };
       cleanup();
       if (rect.width < 5 || rect.height < 5) return; // too small — treat as a cancel
-      chrome.runtime.sendMessage({ type: "DELPHI_REGION_SELECTED", rect, dpr: window.devicePixelRatio || 1 });
+      api.runtime.sendMessage({ type: "DELPHI_REGION_SELECTED", rect, dpr: window.devicePixelRatio || 1 });
     }
     function onKey(e) {
       if (e.key === "Escape") cleanup();
@@ -379,5 +382,5 @@
       stopAuto();
     }
   };
-  chrome.runtime.onMessage.addListener(window.__delphiListener);
+  api.runtime.onMessage.addListener(window.__delphiListener);
 })();
