@@ -39,7 +39,7 @@ Configurable in the extension's Options page:
 
 **Chrome / Brave**: `chrome://extensions` (Brave: `brave://extensions`) → enable Developer mode → "Load unpacked" → select this directory. Chrome's built-in AI works with zero setup if available; **Brave doesn't ship it** (no Gemini Nano component), so pick Ollama or Custom API in Options there.
 
-**Firefox**: `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → select `manifest.json` in this directory. Temporary add-ons are removed when Firefox closes — reload after each restart. Firefox has no built-in on-device AI either (no Prompt API), so use Ollama or Custom API. Requires Firefox 121+ (background-script startup fix this relies on).
+**Firefox**: `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → select `manifest.json` in this directory. **Untested — two manifest keys tried for Firefox compat (`background.scripts`, `sidebar_action`) both broke Chrome loading and were reverted**, so whether the background script even starts on Firefox right now is unconfirmed. Try it and report what actually happens rather than assuming it works. No built-in on-device AI on Firefox either way (no Prompt API), so use Ollama or Custom API.
 
 ## A note on limits
 
