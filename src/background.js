@@ -1,4 +1,10 @@
-import { buildPrompt, buildImagePrompt, buildPageCheckPrompt, parseReply } from "./lib/prompt-template.js";
+import {
+  buildPrompt,
+  buildImagePrompt,
+  buildPageCheckPrompt,
+  parsePageCheckReply,
+  parseReply,
+} from "./lib/prompt-template.js";
 import { generate, getSettings } from "./providers/index.js";
 
 // browser.* (Firefox, promise-only) when present, else chrome.* (Chrome/Brave).
@@ -116,11 +122,15 @@ async function explainImage(imageDataUrl) {
 // the side panel reads it back via chrome.storage.session + storage.onChanged,
 // so it works whether or not the panel happens to be open when it's added.
 const HISTORY_LIMIT = 50;
-async function pushHistory(tabId, entry) {
+async function pushHistoryMany(tabId, entries) {
   const key = `history:${tabId}`;
   const stored = await api.storage.session.get(key);
-  const updated = [...(stored[key] || []), { ts: Date.now(), ...entry }].slice(-HISTORY_LIMIT);
+  const stamped = entries.map((e) => ({ id: crypto.randomUUID(), ts: Date.now(), ...e }));
+  const updated = [...(stored[key] || []), ...stamped].slice(-HISTORY_LIMIT);
   await api.storage.session.set({ [key]: updated });
+}
+async function pushHistory(tabId, entry) {
+  await pushHistoryMany(tabId, [entry]);
 }
 
 function snippet(text, max = 140) {
@@ -211,21 +221,36 @@ async function checkPage(tabId) {
   await ensureContentScript(tabId);
   await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
   const settings = await getSettings();
-  let result;
   try {
     const { windowId } = await api.tabs.get(tabId);
     const shots = await captureFullPage(tabId, windowId);
     const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
-    // Diagnostic, not permanent — surfaces whether the "only sees the
-    // visible area" complaint is a capture bug (count is 1) or the model
-    // ignoring images past the first one (count is right but answers aren't).
-    const note = `(Analyzed ${shots.length} screenshot${shots.length === 1 ? "" : "s"} covering the page.)`;
-    result = { mode: settings.mode, explanation: `${note}\n\n${reply}`, answer: null };
+    const parsed = parsePageCheckReply(reply);
+
+    if (parsed) {
+      // One history entry per question — same rendering the side panel
+      // already uses for everything else, browsable/collapsible per question
+      // instead of one long blob. The corner panel just gets a pointer to
+      // the side panel, since it can't show N separate entries itself.
+      await pushHistoryMany(tabId, parsed.map((p) => ({ mode: settings.mode, ...p })));
+      await api.tabs.sendMessage(tabId, {
+        type: "DELPHI_RESULT",
+        mode: settings.mode,
+        explanation: `Found ${parsed.length} question${parsed.length === 1 ? "" : "s"} — see the side panel for each one.`,
+        answer: null,
+      });
+    } else {
+      // Model didn't follow the ### format — fall back to showing the raw
+      // reply as one blob rather than losing the content entirely.
+      const result = { mode: settings.mode, explanation: reply, answer: null };
+      await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
+      await pushHistory(tabId, { question: "[page check]", ...result });
+    }
   } catch (err) {
-    result = { error: err.message };
+    const result = { error: err.message };
+    await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
+    await pushHistory(tabId, { question: "[page check]", ...result });
   }
-  await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
-  await pushHistory(tabId, { question: "[page check]", ...result });
 }
 
 async function ensureContentScript(tabId) {
@@ -307,6 +332,21 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === "DELPHI_CHECK_PAGE" && msg.tabId) {
     checkPage(msg.tabId);
+    return;
+  }
+
+  if (msg.type === "DELPHI_CLEAR_HISTORY" && msg.tabId) {
+    api.storage.session.remove(`history:${msg.tabId}`);
+    return;
+  }
+
+  if (msg.type === "DELPHI_DELETE_HISTORY_ENTRY" && msg.tabId && msg.entryId) {
+    (async () => {
+      const key = `history:${msg.tabId}`;
+      const stored = await api.storage.session.get(key);
+      const updated = (stored[key] || []).filter((e) => e.id !== msg.entryId);
+      await api.storage.session.set({ [key]: updated });
+    })();
     return;
   }
 });

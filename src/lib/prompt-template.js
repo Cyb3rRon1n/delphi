@@ -54,17 +54,21 @@ export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
     "visible across all of the images, without duplicating a question that " +
     "happens to appear in more than one image due to overlap at the edges.";
 
-  const instruction =
-    mode === MODES.ANSWER_ONLY
-      ? "For each question, on its own line write a short label for the question and its " +
-        "answer, e.g. '1. <short label> — Answer: <answer>'. No explanations. If there are " +
-        "no questions across the images, say so plainly."
-      : "For each question, briefly explain the reasoning — why the correct choice is right " +
-        "and briefly why the other choices are wrong — then end that question's entry with " +
-        "'Answer: <the answer>' on its own line. Number each question clearly. If there are " +
-        "no questions across the images, say so plainly.";
+  // Strict, parseable format instead of "number each question clearly" prose
+  // — a small local model's numbering/formatting is inconsistent enough that
+  // regex-splitting on that alone was unreliable. One delimiter line is a
+  // much lower bar for a model to actually follow consistently.
+  const format =
+    "Format your reply as one block per question, in this exact shape, with no extra text " +
+    "before the first block or after the last: a one-line question label, then a newline, then " +
+    (mode === MODES.ANSWER_ONLY
+      ? "'Answer: <the answer>'"
+      : "a brief explanation of the reasoning (why the correct choice is right and briefly why " +
+        "the others are wrong), then on its own line 'Answer: <the answer>'") +
+    ". Separate each question's block from the next with a line containing only ###. " +
+    "If there are no questions across the images, just say so plainly with no ### blocks.";
 
-  return `${preamble}\n\n${instruction}`;
+  return `${preamble}\n\n${format}`;
 }
 
 // Splits a provider's raw reply into { explanation, answer } for display.
@@ -78,4 +82,21 @@ export function parseReply(rawText) {
   const answer = match[1].trim();
   const explanation = text.slice(0, match.index).trim();
   return { explanation, answer };
+}
+
+// Splits a "Check this page" reply into one {question, explanation, answer}
+// per question, using the ### delimiter buildPageCheckPrompt asks for.
+// Returns null (not an empty array) if the model didn't follow the format
+// (fewer than 2 blocks) — the caller falls back to showing the raw reply
+// as one blob rather than presenting a single "question" with no label.
+export function parsePageCheckReply(rawText) {
+  const blocks = (rawText || "")
+    .split(/\n*###\n*/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  if (blocks.length < 2) return null;
+  return blocks.map((block) => {
+    const [label, ...rest] = block.split("\n");
+    return { question: label.trim(), ...parseReply(rest.join("\n")) };
+  });
 }

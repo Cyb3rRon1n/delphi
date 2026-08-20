@@ -2,19 +2,28 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <title>Delphi</title>
     <style>
       body { font: 13px/1.5 system-ui, sans-serif; margin: 0; padding: 12px;
         background: #1e1e2e; color: #cdd6f4; }
-      h1 { font-size: 14px; margin: 0 0 4px; }
+      h1 { font-size: 14px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+      h1 .mark { width: 18px; height: 18px; flex: none; }
       .hint { color: #888; margin: 0 0 12px; }
       label.toggle { display: flex; align-items: center; gap: 6px; margin: 10px 0; cursor: pointer; }
       a { color: #89b4fa; }
       hr { border: none; border-top: 1px solid #313244; margin: 12px 0; }
       #empty { color: #888; }
+      .history-header { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; }
+      .history-header span { font-weight: 600; color: #94e2d5; flex: 1; }
+      .history-header button { cursor: pointer; background: #313244; color: #cdd6f4; border: none;
+        border-radius: 6px; padding: 4px 8px; font-size: 11px; }
       .entry { background: #313244; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
-      .entry summary { font-weight: 600; color: #94e2d5; white-space: pre-wrap; cursor: pointer; }
+      .entry summary { font-weight: 600; color: #94e2d5; cursor: pointer;
+        display: flex; align-items: flex-start; gap: 8px; }
+      .entry summary .q-text { white-space: pre-wrap; flex: 1; }
       .entry summary::marker { color: #89b4fa; }
       .entry[open] summary { margin-bottom: 6px; }
+      .entry .entry-delete { all: unset; cursor: pointer; color: #f38ba8; font-size: 11px; padding: 0 2px; }
       .entry p { white-space: pre-wrap; margin: 8px 0; }
       .entry .answer { display: none; background: #1e1e2e; border-radius: 6px; padding: 8px; margin-top: 6px; }
       .entry .answer.revealed { display: block; }
@@ -29,7 +38,7 @@
     </style>
   </head>
   <body>
-    <h1>Delphi</h1>
+    <h1><svg class="mark" viewBox="0 0 128 128"><rect width="128" height="128" rx="26" fill="#1e1e2e"/><path d="M64 26 L104 96 L24 96 Z" fill="#89b4fa"/></svg> Delphi</h1>
     <p class="hint">Select text → right-click → "Explain with Delphi", or drag-capture a region. Answers for the active tab collect below.</p>
 
     <button id="check-page">Check this page</button>
@@ -41,6 +50,11 @@
 
     <hr />
 
+    <div class="history-header">
+      <span>History</span>
+      <button id="copy-history">Copy</button>
+      <button id="clear-history">Clear</button>
+    </div>
     <div id="empty">No answers yet on this tab.</div>
     <div id="history"></div>
 

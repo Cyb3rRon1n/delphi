@@ -1,7 +1,14 @@
 // Minimal assert-based self-check. No framework, no fixtures.
 // Run with: node tests/test_prompt_template.js
 import assert from "node:assert/strict";
-import { buildPrompt, buildImagePrompt, buildPageCheckPrompt, parseReply, MODES } from "../src/lib/prompt-template.js";
+import {
+  buildPrompt,
+  buildImagePrompt,
+  buildPageCheckPrompt,
+  parsePageCheckReply,
+  parseReply,
+  MODES,
+} from "../src/lib/prompt-template.js";
 import { looksLikeQuestion } from "../src/lib/detect-questions.js";
 
 // buildPrompt
@@ -36,9 +43,23 @@ assert.match(imgAnswerOnly, /No explanation/);
 // buildPageCheckPrompt
 const pageCheckPrompt = buildPageCheckPrompt(MODES.EXPLAIN);
 assert.match(pageCheckPrompt, /every question visible/);
-assert.match(pageCheckPrompt, /Number each question/);
+assert.match(pageCheckPrompt, /containing only ###/);
 const pageCheckAnswerOnly = buildPageCheckPrompt(MODES.ANSWER_ONLY);
-assert.match(pageCheckAnswerOnly, /No explanations/);
+assert.match(pageCheckAnswerOnly, /'Answer: <the answer>'/);
+
+// parsePageCheckReply
+const multi = parsePageCheckReply(
+  "Q1: capital of France\nParis is the capital because...\nAnswer: Paris\n###\n" +
+    "Q2: 2+2\nBasic addition.\nAnswer: 4"
+);
+assert.equal(multi.length, 2);
+assert.equal(multi[0].question, "Q1: capital of France");
+assert.equal(multi[0].answer, "Paris");
+assert.match(multi[0].explanation, /Paris is the capital/);
+assert.equal(multi[1].answer, "4");
+
+assert.equal(parsePageCheckReply("No delimiter here at all, just plain prose."), null);
+assert.equal(parsePageCheckReply(""), null);
 
 // looksLikeQuestion
 assert.equal(
@@ -49,6 +70,14 @@ assert.equal(
   looksLikeQuestion("What is 7 x 8? A) 54 B) 56 C) 58 D) 64"),
   true
 ); // inline choices on one line, not one-per-line — regression case
+assert.equal(
+  looksLikeQuestion("What is 7 x 8?\n1. 54\n2. 56\n3. 58"),
+  true
+); // numbered choices, not just lettered
+assert.equal(
+  looksLikeQuestion("The sky is blue on a clear day. True or False?"),
+  true
+); // true/false, no lettered/numbered choices at all
 assert.equal(looksLikeQuestion("A) 3 B) 4 C) 5"), false); // no '?'
 assert.equal(looksLikeQuestion("What is your favorite color?"), false); // no choices
 assert.equal(looksLikeQuestion("Just some ordinary paragraph text with no question."), false);

@@ -8,6 +8,8 @@ const autoError = document.getElementById("auto-error");
 const historyEl = document.getElementById("history");
 const emptyEl = document.getElementById("empty");
 const checkPageBtn = document.getElementById("check-page");
+const copyHistoryBtn = document.getElementById("copy-history");
+const clearHistoryBtn = document.getElementById("clear-history");
 
 let currentTabId = null;
 
@@ -36,11 +38,14 @@ async function refreshAutoToggle() {
   toggle.checked = Boolean(enabled);
 }
 
+let currentEntries = [];
+
 async function refreshHistory() {
   if (currentTabId == null) return;
   const key = `history:${currentTabId}`;
   const stored = await api.storage.session.get(key);
-  renderHistory(stored[key] || []);
+  currentEntries = stored[key] || [];
+  renderHistory(currentEntries);
 }
 
 // Collapsed by default (native <details>, no custom JS needed) — a full
@@ -54,13 +59,54 @@ function renderHistory(entries) {
     const details = document.createElement("details");
     details.className = "entry";
     details.open = i === 0;
+
     const summary = document.createElement("summary");
-    summary.textContent = entry.question;
+    const qText = document.createElement("span");
+    qText.className = "q-text";
+    qText.textContent = entry.question;
+    const del = document.createElement("button");
+    del.className = "entry-delete";
+    del.textContent = "✕";
+    del.title = "Delete this entry";
+    del.addEventListener("click", (e) => {
+      e.preventDefault(); // don't toggle the <details> open/closed
+      e.stopPropagation();
+      if (currentTabId == null || !entry.id) return;
+      api.runtime.sendMessage({ type: "DELPHI_DELETE_HISTORY_ENTRY", tabId: currentTabId, entryId: entry.id });
+    });
+    summary.appendChild(qText);
+    summary.appendChild(del);
+
     details.appendChild(summary);
     details.appendChild(buildResultBody(entry));
     historyEl.appendChild(details);
   });
 }
+
+clearHistoryBtn.addEventListener("click", () => {
+  if (currentTabId == null) return;
+  api.runtime.sendMessage({ type: "DELPHI_CLEAR_HISTORY", tabId: currentTabId });
+});
+
+copyHistoryBtn.addEventListener("click", async () => {
+  const text = currentEntries
+    .map((e) => {
+      const parts = [`Q: ${e.question}`];
+      if (e.explanation) parts.push(e.explanation);
+      if (e.answer) parts.push(`Answer: ${e.answer}`);
+      if (e.error) parts.push(`Error: ${e.error}`);
+      return parts.join("\n");
+    })
+    .join("\n\n---\n\n");
+  const original = copyHistoryBtn.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    copyHistoryBtn.textContent = "Copied!";
+  } catch {
+    copyHistoryBtn.textContent = "Copy failed";
+  }
+  setTimeout(() => (copyHistoryBtn.textContent = original), 1200);
+});
 
 toggle.addEventListener("change", async () => {
   if (currentTabId == null) return;

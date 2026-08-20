@@ -4,7 +4,7 @@
 export const id = "ollama";
 export const label = "Ollama (local)";
 
-const DEFAULTS = { baseUrl: "http://localhost:11434", model: "llama3.2" };
+const DEFAULTS = { baseUrl: "http://localhost:11434", model: "llama3.2", visionModel: "llava" };
 
 export async function isAvailable(config = {}) {
   const baseUrl = config.baseUrl || DEFAULTS.baseUrl;
@@ -17,12 +17,14 @@ export async function isAvailable(config = {}) {
 }
 
 // images, when present, is an array of "data:image/...;base64,..." strings —
-// Ollama's /api/generate wants raw base64 with no data: prefix, and a
-// vision-capable model (e.g. llava, qwen2-vl, llama3.2-vision). Its images
-// field is already an array, so multiple screenshots need no extra work here.
+// Ollama's /api/generate wants raw base64 with no data: prefix. Text and
+// vision use separate model fields (config.model / config.visionModel) —
+// one general-purpose model is rarely both a strong text reasoner and
+// vision-capable, so forcing a single choice meant picking a compromise
+// for one path or the other.
 export async function generate(prompt, config = {}, images = null) {
   const baseUrl = config.baseUrl || DEFAULTS.baseUrl;
-  const model = config.model || DEFAULTS.model;
+  const model = images?.length ? config.visionModel || DEFAULTS.visionModel : config.model || DEFAULTS.model;
 
   const body = { model, prompt, stream: false };
   if (images?.length) body.images = images.map((url) => url.replace(/^data:.*?;base64,/, ""));

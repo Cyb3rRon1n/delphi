@@ -5,7 +5,7 @@ const DEFAULTS = {
   providerId: "chrome-ai",
   mode: "explain",
   providerConfig: {
-    ollama: { baseUrl: "http://localhost:11434", model: "llama3.2" },
+    ollama: { baseUrl: "http://localhost:11434", model: "llama3.2", visionModel: "llava" },
     custom: { baseUrl: "https://api.openai.com/v1", apiKey: "", model: "gpt-4o-mini" },
   },
 };
@@ -19,6 +19,7 @@ async function load() {
   const ollama = { ...DEFAULTS.providerConfig.ollama, ...settings.providerConfig.ollama };
   document.getElementById("ollama-baseUrl").value = ollama.baseUrl;
   document.getElementById("ollama-model").value = ollama.model;
+  document.getElementById("ollama-visionModel").value = ollama.visionModel;
 
   const custom = { ...DEFAULTS.providerConfig.custom, ...settings.providerConfig.custom };
   document.getElementById("custom-baseUrl").value = custom.baseUrl;
@@ -34,6 +35,7 @@ async function save() {
     ollama: {
       baseUrl: document.getElementById("ollama-baseUrl").value || DEFAULTS.providerConfig.ollama.baseUrl,
       model: document.getElementById("ollama-model").value || DEFAULTS.providerConfig.ollama.model,
+      visionModel: document.getElementById("ollama-visionModel").value || DEFAULTS.providerConfig.ollama.visionModel,
     },
     custom: {
       baseUrl: document.getElementById("custom-baseUrl").value || DEFAULTS.providerConfig.custom.baseUrl,

@@ -9,9 +9,13 @@ export function looksLikeQuestion(text) {
   if (t.length < 15 || t.length > 1000) return false;
   if (!/\?/.test(t)) return false;
   // A choice marker at the start of the text, or preceded by any whitespace —
-  // covers both one-per-line lists and inline "A) x B) y" on a single line.
-  const choiceLines = t.match(/(^|\s)[A-Da-d][.):]\s+\S/g) || [];
-  return choiceLines.length >= 2;
+  // covers both one-per-line lists and inline "A) x B) y" on a single line,
+  // and numbered choices ("1. x 2. y") alongside lettered ones.
+  const choiceLines = t.match(/(^|\s)(?:[A-Da-d]|[1-9])[.):]\s+\S/g) || [];
+  if (choiceLines.length >= 2) return true;
+  // True/false questions have no lettered/numbered choices at all — just
+  // both words present is a reasonable-enough signal alongside the '?'.
+  return /\btrue\b/i.test(t) && /\bfalse\b/i.test(t);
 }
 
 const CANDIDATE_SELECTOR = "p, div, li, td, fieldset, section";
