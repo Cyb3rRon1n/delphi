@@ -43,31 +43,42 @@ chrome.commands.onCommand.addListener(async (command) => {
 
 // --- text / image explain flows ---------------------------------------
 
+// Shared by every entry point. Never throws — a provider/quota failure
+// becomes a normal {error} result so a batch loop (see DELPHI_EXPLAIN_TEXT
+// below) can keep going instead of aborting on one bad question.
+async function runGenerate(mode, run) {
+  try {
+    const reply = await run();
+    return { mode, ...parseReply(reply) };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function explainText(text) {
+  const settings = await getSettings();
+  return runGenerate(settings.mode, () => generate(buildPrompt(text, settings.mode)));
+}
+
+async function explainImage(imageDataUrl) {
+  const settings = await getSettings();
+  return runGenerate(settings.mode, () => generate(buildImagePrompt(settings.mode), imageDataUrl));
+}
+
+// Selection and region-capture have no natural on-page anchor, so their
+// result still goes to the shared bottom-right panel via broadcast.
 async function runForText(tabId, text) {
   await ensureContentScript(tabId);
   await chrome.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
-  const settings = await getSettings();
-  await sendResult(tabId, settings.mode, () => generate(buildPrompt(text, settings.mode)));
+  const result = await explainText(text);
+  await chrome.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
 }
 
 async function runForImage(tabId, imageDataUrl) {
   await ensureContentScript(tabId);
   await chrome.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
-  const settings = await getSettings();
-  await sendResult(tabId, settings.mode, () =>
-    generate(buildImagePrompt(settings.mode), imageDataUrl)
-  );
-}
-
-async function sendResult(tabId, mode, run) {
-  let payload;
-  try {
-    const reply = await run();
-    payload = { type: "DELPHI_RESULT", mode, ...parseReply(reply) };
-  } catch (err) {
-    payload = { type: "DELPHI_RESULT", error: err.message };
-  }
-  await chrome.tabs.sendMessage(tabId, payload);
+  const result = await explainImage(imageDataUrl);
+  await chrome.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
 }
 
 async function ensureContentScript(tabId) {
@@ -118,9 +129,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
 
+  // From an auto-detect "Explain" click (single or as part of a batch) —
+  // responds directly to the sender rather than broadcasting, so content.js
+  // can render the result inline next to the specific question and, for a
+  // batch, await each one before starting the next.
   if (msg.type === "DELPHI_EXPLAIN_TEXT" && tabId) {
-    runForText(tabId, msg.text);
-    return;
+    explainText(msg.text).then(sendResponse);
+    return true; // keep the message channel open for the async response
   }
 
   if (msg.type === "DELPHI_GET_AUTO") {

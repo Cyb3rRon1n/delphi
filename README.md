@@ -10,7 +10,9 @@ Three ways to hand Delphi a question:
 
 1. **Select text** → right-click → "Explain with Delphi", or `Ctrl+Shift+E`.
 2. **Capture a region** → right-click anywhere (or on an image) → "Capture region with Delphi", or `Ctrl+Shift+D` → drag a box around a question that isn't selectable text (an image, a canvas-rendered quiz, a PDF viewer). Sent to a vision-capable model — no separate OCR step needed, the model reads the image directly.
-3. **Auto-detect** (optional, off by default) → toggle it on in the popup for the current tab. Delphi scans the page for question-shaped text (a `?` plus multiple `A) B) C)`-style choices) and adds a small "Explain" button next to each one it finds. A "Delphi watching (N)" badge stays visible the whole time with a one-click stop, and the toggle resets automatically when you navigate to a new page — it's opt-in per page load, never silently persistent. Clicking a detected question's button is still what triggers the actual LLM call.
+3. **Auto-detect** (optional, off by default) → toggle it on in the popup for the current tab. Delphi scans the page for question-shaped text (a `?` plus multiple `A) B) C)`-style choices) and adds a small "Explain" button next to each one it finds, with the result rendered as a small card right next to that question — not the shared corner panel, since with several questions on a page that would just overwrite itself. A "Delphi watching (N)" badge stays visible the whole time with a one-click stop, and the toggle resets automatically when you navigate to a new page — it's opt-in per page load, never silently persistent.
+
+**A whole page of questions**: the badge also has an **"explain all"** button — one click runs every currently-detected question through the LLM, one at a time, with a "Explaining 3 of 20…" progress indicator and a one-click cancel. It's sequential rather than parallel on purpose: a local model (on-device Gemini Nano, or CPU-only Ollama) is a single shared resource, so firing off many requests at once wouldn't be faster, just contended — and each real question can take anywhere from several seconds to a couple of minutes depending on your hardware. "Explain all" is still one explicit click fanning out to several calls you asked for, not detection triggering anything on its own.
 
 In every case, Delphi sends the content to an LLM with a prompt asking for reasoning first, then the answer. The answer is hidden behind a "Reveal answer" button by default — read the explanation, think about it, then check yourself.
 
@@ -32,9 +34,13 @@ Configurable in the extension's Options page:
 1. `chrome://extensions` → enable Developer mode → "Load unpacked" → select this directory.
 2. Open the extension's Options page and pick a provider (Chrome built-in AI works with zero setup, if available in your Chrome version).
 
+## A note on limits
+
+Chrome's built-in AI has no cross-question cap worth worrying about — each explanation gets its own fresh model session, so nothing accumulates across a long "explain all" run. The only real per-question limit is a single question being too long for one session's own context window, which shows up as a plain, readable error on that question's card rather than a cryptic failure. A **custom API** provider is different: a hosted service's rate limit is a genuine shared constraint, so a 429 during a busy "explain all" run shows up as "Rate limited by the API — wait a moment, or switch provider" on that question, and the batch keeps going rather than aborting.
+
 ## Status
 
-v0.2 — text selection, region capture (image input, vision-capable providers), and opt-in per-tab auto-detect. Every path still ends in a manual click before any LLM call happens. All three paths manually verified end-to-end against Chrome's built-in AI (real on-device Gemini Nano) — selection, region-capture crop/vision, and auto-detect's heuristic + click-to-explain button all confirmed working against `manual-test/index.html`.
+v0.3 — text selection, region capture (image input, vision-capable providers), opt-in per-tab auto-detect with inline per-question results, and a one-click "explain all" for a page with several questions. Every path still starts from a manual click before any LLM call happens. All three input paths manually verified end-to-end against Chrome's built-in AI (real on-device Gemini Nano) — selection, region-capture crop/vision, and auto-detect's heuristic + click-to-explain button all confirmed working against `manual-test/index.html`.
 
 ## Tests
 

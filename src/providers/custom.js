@@ -30,6 +30,12 @@ export async function generate(prompt, config = {}, imageDataUrl = null) {
       messages: [{ role: "user", content }],
     }),
   });
+  if (res.status === 429) {
+    // The real cap that actually applies to this provider — unlike
+    // on-device chrome-ai, a hosted API's rate/usage limit is a genuine
+    // whole-account constraint, not just a per-call one.
+    throw new Error("Rate limited by the API (429) — wait a moment, or switch provider in Options.");
+  }
   if (!res.ok) {
     throw new Error(`Custom provider request failed: ${res.status} ${res.statusText}`);
   }

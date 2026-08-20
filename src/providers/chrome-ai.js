@@ -28,6 +28,16 @@ export async function generate(prompt, config = {}, imageDataUrl = null) {
     return await session.prompt([
       { role: "user", content: [{ type: "text", value: prompt }, { type: "image", value: blob }] },
     ]);
+  } catch (err) {
+    // Each call gets its own fresh session (destroyed below), so there's no
+    // cross-call/whole-batch quota to run out of — the only real cap is a
+    // single question's prompt exceeding *this* session's own context
+    // window, which surfaces as QuotaExceededError. Give that a plain
+    // message instead of letting the raw DOMException bubble up.
+    if (err?.name === "QuotaExceededError") {
+      throw new Error("This question is too long for the on-device model's context limit.");
+    }
+    throw err;
   } finally {
     session.destroy();
   }

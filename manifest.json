@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Delphi — Study Explainer",
-  "version": "0.2.0",
-  "description": "Select, screenshot, or auto-detect a question on any page and get an explanation-first answer from a local LLM. Manual trigger for every answer — auto-detect only ever adds a click-to-explain button, per-tab, opt-in.",
+  "version": "0.3.0",
+  "description": "Select, screenshot, or auto-detect questions on any page and get explanation-first answers from a local LLM. Manual trigger for every answer — auto-detect adds click-to-explain buttons (or one 'explain all' for a whole page of questions), per-tab, opt-in.",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
   "background": {
     "service_worker": "src/background.js",
