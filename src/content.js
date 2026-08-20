@@ -1,7 +1,7 @@
 // Injected on demand (context menu / keyboard shortcut / popup toggle) —
 // never runs automatically on page load, and is idempotent against
 // re-injection (api.scripting.executeScript re-runs this whole file).
-(() => {
+(async () => {
   // browser.* (Firefox, promise-only) when present, else chrome.* (Chrome/Brave).
   const api = globalThis.browser ?? chrome;
 
@@ -11,45 +11,8 @@
   }
   window.__delphiInjected = true;
 
-  // --- shared result rendering (used by the bottom panel and inline cards) -
-
-  // result: {explanation?, answer?, mode?, error?} — same shape whether it
-  // came from a DELPHI_RESULT broadcast or a direct DELPHI_EXPLAIN_TEXT reply.
-  function buildResultBody(result) {
-    const body = document.createElement("div");
-    if (result.error) {
-      const p = document.createElement("p");
-      p.className = "err";
-      p.textContent = result.error;
-      body.appendChild(p);
-      return body;
-    }
-    if (result.explanation) {
-      const p = document.createElement("p");
-      p.textContent = result.explanation;
-      body.appendChild(p);
-    }
-    if (result.answer) {
-      if (result.mode === "answer_only") {
-        const p = document.createElement("p");
-        p.textContent = `Answer: ${result.answer}`;
-        body.appendChild(p);
-      } else {
-        const reveal = document.createElement("button");
-        reveal.textContent = "Reveal answer";
-        const answerBox = document.createElement("div");
-        answerBox.className = "answer";
-        answerBox.textContent = `Answer: ${result.answer}`;
-        reveal.addEventListener("click", () => {
-          answerBox.classList.add("revealed");
-          reveal.remove();
-        });
-        body.appendChild(reveal);
-        body.appendChild(answerBox);
-      }
-    }
-    return body;
-  }
+  // Shared with the side panel — see src/lib/render-result.js.
+  const { buildResultBody } = await import(api.runtime.getURL("src/lib/render-result.js"));
 
   // --- result panel (bottom-right, for selection + region capture) ---------
 

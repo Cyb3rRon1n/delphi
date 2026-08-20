@@ -10,11 +10,15 @@ Three ways to hand Delphi a question:
 
 1. **Select text** → right-click → "Explain with Delphi", or `Ctrl+Shift+E`.
 2. **Capture a region** → right-click anywhere (or on an image) → "Capture region with Delphi", or `Ctrl+Shift+D` → drag a box around a question that isn't selectable text (an image, a canvas-rendered quiz, a PDF viewer). Sent to a vision-capable model — no separate OCR step needed, the model reads the image directly.
-3. **Auto-detect** (optional, off by default) → toggle it on in the popup for the current tab. Delphi scans the page for question-shaped text (a `?` plus multiple `A) B) C)`-style choices) and adds a small "Explain" button next to each one it finds, with the result rendered as a small card right next to that question — not the shared corner panel, since with several questions on a page that would just overwrite itself. A "Delphi watching (N)" badge stays visible the whole time with a one-click stop, and the toggle resets automatically when you navigate to a new page — it's opt-in per page load, never silently persistent.
+3. **Auto-detect** (optional, off by default) → toggle it on in the side panel for the current tab. Delphi scans the page for question-shaped text (a `?` plus multiple `A) B) C)`-style choices) and adds a small "Explain" button next to each one it finds, with the result rendered as a small card right next to that question — not the shared corner panel, since with several questions on a page that would just overwrite itself. A "Delphi watching (N)" badge stays visible the whole time with a one-click stop, and the toggle resets automatically when you navigate to a new page — it's opt-in per page load, never silently persistent.
 
 **A whole page of questions**: the badge also has an **"explain all"** button — one click runs every currently-detected question through the LLM, one at a time, with a "Explaining 3 of 20…" progress indicator and a one-click cancel. It's sequential rather than parallel on purpose: a local model (on-device Gemini Nano, or CPU-only Ollama) is a single shared resource, so firing off many requests at once wouldn't be faster, just contended — and each real question can take anywhere from several seconds to a couple of minutes depending on your hardware. "Explain all" is still one explicit click fanning out to several calls you asked for, not detection triggering anything on its own.
 
 In every case, Delphi sends the content to an LLM with a prompt asking for reasoning first, then the answer. The answer is hidden behind a "Reveal answer" button by default — read the explanation, think about it, then check yourself.
+
+## Side panel
+
+Click the toolbar icon (Chrome/Brave) to open Delphi as a docked side panel instead of a popup that closes on you — it stays open while you work through a page. It shows the auto-detect toggle and a running history of every answer given on the current tab (newest first), so you can scroll back through earlier questions instead of losing them once a floating card/panel closes. History is per-tab and clears on navigation, same as auto-detect. Firefox gets an equivalent dedicated sidebar button instead (no imperative API there — it just toggles).
 
 ## LLM providers
 

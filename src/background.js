@@ -7,6 +7,17 @@ const api = globalThis.browser ?? chrome;
 const MENU_EXPLAIN_SELECTION = "delphi-explain-selection";
 const MENU_CAPTURE_REGION = "delphi-capture-region";
 
+// Chrome/Brave: clicking the toolbar icon opens the side panel directly.
+// Firefox has no sidePanel API — it gets its own dedicated toolbar button
+// from the "sidebar_action" manifest key instead (no JS wiring needed for
+// that), so the main action button falls back to opening Options there
+// rather than doing nothing.
+if (api.sidePanel) {
+  api.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+} else if (api.action) {
+  api.action.onClicked.addListener(() => api.runtime.openOptionsPage());
+}
+
 api.runtime.onInstalled.addListener(() => {
   api.contextMenus.create({
     id: MENU_EXPLAIN_SELECTION,
@@ -68,6 +79,21 @@ async function explainImage(imageDataUrl) {
   return runGenerate(settings.mode, () => generate(buildImagePrompt(settings.mode), imageDataUrl));
 }
 
+// Every explanation, from any of the three input paths, lands here too —
+// the side panel reads it back via chrome.storage.session + storage.onChanged,
+// so it works whether or not the panel happens to be open when it's added.
+const HISTORY_LIMIT = 50;
+async function pushHistory(tabId, entry) {
+  const key = `history:${tabId}`;
+  const stored = await api.storage.session.get(key);
+  const updated = [...(stored[key] || []), { ts: Date.now(), ...entry }].slice(-HISTORY_LIMIT);
+  await api.storage.session.set({ [key]: updated });
+}
+
+function snippet(text, max = 140) {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
 // Selection and region-capture have no natural on-page anchor, so their
 // result still goes to the shared bottom-right panel via broadcast.
 async function runForText(tabId, text) {
@@ -75,6 +101,7 @@ async function runForText(tabId, text) {
   await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
   const result = await explainText(text);
   await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
+  await pushHistory(tabId, { question: snippet(text), ...result });
 }
 
 async function runForImage(tabId, imageDataUrl) {
@@ -82,6 +109,7 @@ async function runForImage(tabId, imageDataUrl) {
   await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
   const result = await explainImage(imageDataUrl);
   await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
+  await pushHistory(tabId, { question: "[captured image]", ...result });
 }
 
 async function ensureContentScript(tabId) {
@@ -137,7 +165,10 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // can render the result inline next to the specific question and, for a
   // batch, await each one before starting the next.
   if (msg.type === "DELPHI_EXPLAIN_TEXT" && tabId) {
-    explainText(msg.text).then(sendResponse);
+    explainText(msg.text).then((result) => {
+      pushHistory(tabId, { question: snippet(msg.text), ...result });
+      sendResponse(result);
+    });
     return true; // keep the message channel open for the async response
   }
 
@@ -174,8 +205,15 @@ async function setAuto(tabId, enabled) {
 }
 
 // Auto-detect is scoped to the current page load only — never silently
-// re-enabled after navigation. See CLAUDE.md's scope note on why.
+// re-enabled after navigation. See CLAUDE.md's scope note on why. History
+// is scoped the same way — a new page is a new set of questions.
 api.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "loading") api.storage.session.remove(`auto:${tabId}`);
+  if (changeInfo.status === "loading") {
+    api.storage.session.remove(`auto:${tabId}`);
+    api.storage.session.remove(`history:${tabId}`);
+  }
 });
-api.tabs.onRemoved.addListener((tabId) => api.storage.session.remove(`auto:${tabId}`));
+api.tabs.onRemoved.addListener((tabId) => {
+  api.storage.session.remove(`auto:${tabId}`);
+  api.storage.session.remove(`history:${tabId}`);
+});
