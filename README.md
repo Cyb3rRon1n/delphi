@@ -18,7 +18,7 @@ In every case, Delphi sends the content to an LLM with a prompt asking for reaso
 
 Configurable in the extension's Options page:
 
-- **Chrome built-in AI (default)** — Gemini Nano via Chrome's [Prompt API](https://developer.chrome.com/docs/ai/prompt-api). Free, on-device, no API key, no network call once the model is downloaded. Requires a recent Chrome (148+) with the feature available.
+- **Chrome built-in AI (default)** — Gemini Nano via Chrome's [Prompt API](https://developer.chrome.com/docs/ai/prompt-api). Free, on-device, no API key, no network call once the model is downloaded. Requires a recent Chrome (148+); the on-device model isn't instant on first use — the first `LanguageModel.create()` call triggers a real download, so give it a few minutes before assuming it's broken. Behind two `chrome://flags` on some Chrome builds (`#prompt-api-for-gemini-nano`, `#optimization-guide-on-device-model`) until it's fully rolled out.
 - **Ollama (local)** — points at a local `ollama serve` instance. Free, private, works offline, needs Ollama installed with a model pulled.
 - **Custom API** — any OpenAI-compatible chat completions endpoint (OpenAI, OpenRouter, Groq, etc.) with a key you supply and that stays in local extension storage.
 
@@ -34,7 +34,7 @@ Configurable in the extension's Options page:
 
 ## Status
 
-v0.2 — text selection, region capture (image input, vision-capable providers), and opt-in per-tab auto-detect. Every path still ends in a manual click before any LLM call happens.
+v0.2 — text selection, region capture (image input, vision-capable providers), and opt-in per-tab auto-detect. Every path still ends in a manual click before any LLM call happens. All three paths manually verified end-to-end against Chrome's built-in AI (real on-device Gemini Nano) — selection, region-capture crop/vision, and auto-detect's heuristic + click-to-explain button all confirmed working against `manual-test/index.html`.
 
 ## Tests
 
