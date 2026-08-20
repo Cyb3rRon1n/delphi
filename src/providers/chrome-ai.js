@@ -11,15 +11,23 @@ export async function isAvailable() {
   return availability !== "unavailable";
 }
 
-export async function generate(prompt) {
+// imageDataUrl, when present, is a "data:image/...;base64,..." string.
+export async function generate(prompt, config = {}, imageDataUrl = null) {
   if (typeof LanguageModel === "undefined") {
     throw new Error(
       "Chrome's built-in AI (LanguageModel) isn't available in this browser/version."
     );
   }
-  const session = await LanguageModel.create();
+  const session = await LanguageModel.create(
+    imageDataUrl ? { expectedInputs: [{ type: "image" }] } : undefined
+  );
   try {
-    return await session.prompt(prompt);
+    if (!imageDataUrl) return await session.prompt(prompt);
+
+    const blob = await (await fetch(imageDataUrl)).blob();
+    return await session.prompt([
+      { role: "user", content: [{ type: "text", value: prompt }, { type: "image", value: blob }] },
+    ]);
   } finally {
     session.destroy();
   }

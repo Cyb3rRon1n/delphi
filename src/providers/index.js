@@ -15,9 +15,9 @@ export async function getSettings() {
   return stored;
 }
 
-export async function generate(prompt) {
+export async function generate(prompt, imageDataUrl = null) {
   const settings = await getSettings();
   const provider = PROVIDERS[settings.providerId] || chromeAi;
   const config = settings.providerConfig?.[provider.id] || {};
-  return provider.generate(prompt, config);
+  return provider.generate(prompt, config, imageDataUrl);
 }

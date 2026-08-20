@@ -8,10 +8,17 @@ export async function isAvailable(config = {}) {
   return Boolean(config.baseUrl && config.apiKey);
 }
 
-export async function generate(prompt, config = {}) {
+// imageDataUrl, when present, uses the standard OpenAI vision content-array
+// shape ({type: "image_url"}) — supported by OpenAI, OpenRouter, and most
+// OpenAI-compatible endpoints when the chosen model is vision-capable.
+export async function generate(prompt, config = {}, imageDataUrl = null) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error("Custom provider requires baseUrl and apiKey (set in Options).");
   }
+  const content = imageDataUrl
+    ? [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: imageDataUrl } }]
+    : prompt;
+
   const res = await fetch(`${config.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -20,7 +27,7 @@ export async function generate(prompt, config = {}) {
     },
     body: JSON.stringify({
       model: config.model || "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content }],
     }),
   });
   if (!res.ok) {

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Delphi — Study Explainer",
-  "version": "0.1.0",
-  "description": "Select a question on any page, get an explanation-first answer from a local LLM. Manual trigger only — no background scanning.",
+  "version": "0.2.0",
+  "description": "Select, screenshot, or auto-detect a question on any page and get an explanation-first answer from a local LLM. Manual trigger for every answer — auto-detect only ever adds a click-to-explain button, per-tab, opt-in.",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
   "background": {
     "service_worker": "src/background.js",
@@ -26,6 +26,16 @@
     "explain-selection": {
       "suggested_key": { "default": "Ctrl+Shift+E", "mac": "Command+Shift+E" },
       "description": "Explain the selected question"
+    },
+    "capture-region": {
+      "suggested_key": { "default": "Ctrl+Shift+D", "mac": "Command+Shift+D" },
+      "description": "Capture a screen region to explain"
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/lib/*.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

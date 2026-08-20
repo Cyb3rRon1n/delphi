@@ -8,11 +8,18 @@
       p { margin: 0 0 8px; color: #555; }
       kbd { background: #eee; border-radius: 4px; padding: 1px 5px; }
       a { color: #3b82f6; }
+      label { display: flex; align-items: center; gap: 6px; margin: 10px 0; cursor: pointer; }
+      .hint { font-size: 11px; color: #888; margin: -4px 0 8px 22px; }
     </style>
   </head>
   <body>
     <h1>Delphi</h1>
     <p>Select a practice question, then right-click → <em>Explain with Delphi</em>, or press <kbd>Ctrl+Shift+E</kbd>.</p>
+    <p>Right-click an image, or press <kbd>Ctrl+Shift+D</kbd> to capture a region, for non-selectable questions.</p>
+
+    <label><input type="checkbox" id="auto-toggle" /> Auto-detect questions on this tab</label>
+    <p class="hint">Adds an "Explain" button next to detected questions — still click-to-run, nothing auto-answers. Resets when you navigate away.</p>
+
     <p>Manual trigger only — nothing runs until you ask it to.</p>
     <a href="#" id="open-options">Settings</a>
     <script src="popup.js"></script>

@@ -1,15 +1,18 @@
 # delphi
 
-A Chrome extension for self-study: select a practice question on any page, get an explanation of the reasoning — including why the *other* choices are wrong, which is the part most practice tests and mock exams skip — with the answer revealed on click.
+A Chrome extension for self-study: get an explanation of the reasoning behind a practice question — including why the *other* choices are wrong, which is the part most practice tests and mock exams skip — with the answer revealed on click.
 
-**Not for live/proctored exams.** No background scanning, no screen capture, no covert overlay — it only runs when you explicitly trigger it (right-click a selection → "Explain with Delphi", or `Ctrl+Shift+E`), and the panel it shows is a normal in-page UI element, not something designed to hide from a screen share or a proctor. It exists to fix a specific self-study problem: mock tests that tell you an answer is wrong without ever saying why.
+**Not for live/proctored exams.** Every answer requires an explicit click from you — nothing auto-answers, ever. The panel and buttons it shows are normal in-page UI elements, not something designed to hide from a screen share or a proctor. It exists to fix a specific self-study problem: mock tests that tell you an answer is wrong without ever saying why.
 
 ## How it works
 
-1. Select a question (and its choices) on any page.
-2. Trigger it via the context menu or the keyboard shortcut.
-3. Delphi sends the selected text to an LLM with a prompt asking for reasoning first, then the answer.
-4. The answer is hidden behind a "Reveal answer" button by default — read the explanation, think about it, then check yourself.
+Three ways to hand Delphi a question:
+
+1. **Select text** → right-click → "Explain with Delphi", or `Ctrl+Shift+E`.
+2. **Capture a region** → right-click anywhere (or on an image) → "Capture region with Delphi", or `Ctrl+Shift+D` → drag a box around a question that isn't selectable text (an image, a canvas-rendered quiz, a PDF viewer). Sent to a vision-capable model — no separate OCR step needed, the model reads the image directly.
+3. **Auto-detect** (optional, off by default) → toggle it on in the popup for the current tab. Delphi scans the page for question-shaped text (a `?` plus multiple `A) B) C)`-style choices) and adds a small "Explain" button next to each one it finds. A "Delphi watching (N)" badge stays visible the whole time with a one-click stop, and the toggle resets automatically when you navigate to a new page — it's opt-in per page load, never silently persistent. Clicking a detected question's button is still what triggers the actual LLM call.
+
+In every case, Delphi sends the content to an LLM with a prompt asking for reasoning first, then the answer. The answer is hidden behind a "Reveal answer" button by default — read the explanation, think about it, then check yourself.
 
 ## LLM providers
 
@@ -31,7 +34,7 @@ Configurable in the extension's Options page:
 
 ## Status
 
-v0.1 — manual-trigger only, text selection only (no OCR/image support yet — if a question is rendered as an image/canvas rather than selectable text, select the surrounding text or skip it for now).
+v0.2 — text selection, region capture (image input, vision-capable providers), and opt-in per-tab auto-detect. Every path still ends in a manual click before any LLM call happens.
 
 ## Tests
 
