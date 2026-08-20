@@ -1,4 +1,22 @@
-# delphi
+# Delphi
+
+<p align="center">
+  <a href="https://github.com/Cyb3rRon1n/delphi/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/Cyb3rRon1n/delphi/ci.yml?label=CI" alt="CI">
+  </a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/manifest-v3-blue.svg" alt="Manifest V3">
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cyb3rRon1n/delphi/main/docs/images/banner.svg"
+       alt="Delphi - A self-study explainer that reads the page with you"
+       style="max-width: 100%; height: auto;">
+</p>
+
+<p align="center">
+  📖 <a href="docs/walkthrough.md">Walkthrough</a> · <a href="CLAUDE.md">Architecture &amp; Verification Log</a> · <a href="https://cyb3rron1n.github.io/">Sibling Projects</a> · <a href="docs/images/favicon.svg">Favicon</a>
+</p>
 
 A browser extension (Chrome, Brave, Firefox) for self-study: get an explanation of the reasoning behind a practice question — including why the *other* choices are wrong, which is the part most practice tests and mock exams skip — with the answer revealed on click.
 
@@ -46,11 +64,16 @@ Configurable in the extension's Options page:
 - **Explain first** (default) — reasoning, then a hidden answer you reveal when ready.
 - **Answer only** — for a quick self-check pass once you've already reasoned it out yourself.
 
-## Install (unpacked, for development)
+## Install
 
-**Chrome / Brave**: `chrome://extensions` (Brave: `brave://extensions`) → enable Developer mode → "Load unpacked" → select this directory. Chrome's built-in AI works with zero setup if available; **Brave doesn't ship it** (no Gemini Nano component), so pick Ollama or Custom API in Options there.
+```
+git clone https://github.com/Cyb3rRon1n/delphi.git
+cd delphi && ./install.sh
+```
 
-**Firefox**: `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → select `manifest.json` in this directory. **Untested — two manifest keys tried for Firefox compat (`background.scripts`, `sidebar_action`) both broke Chrome loading and were reverted**, so whether the background script even starts on Firefox right now is unconfirmed. Try it and report what actually happens rather than assuming it works. No built-in on-device AI on Firefox either way (no Prompt API), so use Ollama or Custom API.
+Launches Chrome/Chromium/Brave with Delphi loaded, in a throwaway profile — no manual "Load unpacked" clicking. Full first-run walkthrough (verifying the LLM backend, testing all four input paths against the included test page): **[docs/walkthrough.md](docs/walkthrough.md)**.
+
+**Manual load, or Firefox**: `chrome://extensions` (Brave: `brave://extensions`) → enable Developer mode → "Load unpacked" → select this directory. For Firefox, `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → select `manifest.json`. **Firefox is untested** — two manifest keys tried for compat (`background.scripts`, `sidebar_action`) both broke Chrome loading and were reverted, so whether the background script even starts there is unconfirmed; try it and report what happens. Chrome's built-in AI works with zero setup if available; **Brave doesn't ship it** (no Gemini Nano component) and Firefox has no equivalent either, so use Ollama or Custom API on both.
 
 ## Permissions
 
@@ -62,10 +85,12 @@ Chrome's built-in AI has no cross-question cap worth worrying about — each exp
 
 ## Status
 
-v0.8 — text selection, region capture, whole-page "check this page" (iframe-aware, structured per-question output), opt-in per-tab auto-detect (lettered/numbered/true-false detection, "explain all"/"answer all"), a docked side panel with history management, and separate Ollama text/vision models. Every path still starts from a manual click before any LLM call happens. Core paths manually verified end-to-end against Chrome's built-in AI (real on-device Gemini Nano) and Ollama — see `CLAUDE.md` for the specific bugs found and fixed along the way (service worker idle-kill on long local-model calls, iframe-scrolled full-page capture, etc.).
+v0.9 — text selection, region capture, whole-page "check this page" (iframe-aware, structured per-question output), opt-in per-tab auto-detect (lettered/numbered/true-false detection, "explain all"/"answer all"), a docked side panel with history management and a live "thinking" indicator, and separate Ollama text/vision models. Every path still starts from a manual click before any LLM call happens. Core paths manually verified end-to-end against Chrome's built-in AI (real on-device Gemini Nano) and Ollama — see [CLAUDE.md](CLAUDE.md) for the specific bugs found and fixed along the way (service worker idle-kill on long local-model calls, iframe-scrolled full-page capture, etc.).
 
 ## Tests
 
 ```
 node tests/test_prompt_template.js
 ```
+
+CI (`.github/workflows/ci.yml`) runs this plus a manifest-validity check and a syntax check across every script on each push — the same checks done by hand throughout this project's development, now automated.

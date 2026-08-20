@@ -1,0 +1,35 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="640" fill="#14161a"/>
+
+  <g stroke="#ffffff" stroke-opacity="0.035" stroke-width="1">
+    <line x1="0" y1="140" x2="1280" y2="140"/>
+    <line x1="0" y1="230" x2="1280" y2="230"/>
+    <line x1="0" y1="480" x2="1280" y2="480"/>
+    <line x1="0" y1="560" x2="1280" y2="560"/>
+  </g>
+
+  <defs>
+    <linearGradient id="tri" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#89b4fa"/>
+      <stop offset="100%" stop-color="#94e2d5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- delta mark, centered -->
+  <g transform="translate(496,21.5) scale(4.5)">
+    <path fill="url(#tri)" d="M32 8 L54 52 L10 52 Z"/>
+  </g>
+
+  <text x="640" y="400" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="92" font-weight="700" letter-spacing="10" fill="#f0f2f5">DELPHI</text>
+  <text x="640" y="448" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="28" fill="#9aa1ab">A self-study explainer that reads the page with you</text>
+
+  <!-- multiple-choice motif: three answer bars, the right one picked -->
+  <g>
+    <rect x="592" y="502" width="96" height="18" rx="9" fill="#3a3f47" opacity="0.5"/>
+    <rect x="592" y="529" width="96" height="18" rx="9" fill="#89b4fa"/>
+    <rect x="592" y="556" width="96" height="18" rx="9" fill="#3a3f47" opacity="0.5"/>
+    <path d="M700 533 l5 5 10-10" stroke="#94e2d5" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
