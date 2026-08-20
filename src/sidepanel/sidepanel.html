@@ -20,11 +20,18 @@
         border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; }
       .entry .err { color: #f38ba8; }
       #auto-error { display: none; color: #f38ba8; margin: 0 0 10px; }
+      #check-page { display: block; width: 100%; box-sizing: border-box; cursor: pointer;
+        background: #89b4fa; color: #1e1e2e; border: none; border-radius: 6px; padding: 8px;
+        font-size: 12px; font-weight: 600; margin: 10px 0; }
+      #check-page:disabled { opacity: 0.6; cursor: default; }
     </style>
   </head>
   <body>
     <h1>Delphi</h1>
     <p class="hint">Select text → right-click → "Explain with Delphi", or drag-capture a region. Answers for the active tab collect below.</p>
+
+    <button id="check-page">Check this page</button>
+    <p class="hint" style="margin-top: -6px;">Screenshots the whole visible tab and finds/answers every question in it — works inside iframes too (e.g. LMS knowledge checks) where the other paths can't see anything.</p>
 
     <label class="toggle"><input type="checkbox" id="auto-toggle" /> Auto-detect questions on this tab</label>
     <p id="auto-error"></p>

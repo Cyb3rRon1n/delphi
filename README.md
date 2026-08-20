@@ -6,11 +6,12 @@ A browser extension (Chrome, Brave, Firefox) for self-study: get an explanation 
 
 ## How it works
 
-Three ways to hand Delphi a question:
+Four ways to hand Delphi a question:
 
-1. **Select text** → right-click → "Explain with Delphi", or `Ctrl+Shift+E`.
+1. **Select text** → right-click → "Explain with Delphi", or `Ctrl+Shift+E`. Works even for text selected inside an iframe.
 2. **Capture a region** → right-click anywhere (or on an image) → "Capture region with Delphi", or `Ctrl+Shift+D` → drag a box around a question that isn't selectable text (an image, a canvas-rendered quiz, a PDF viewer). Sent to a vision-capable model — no separate OCR step needed, the model reads the image directly.
-3. **Auto-detect** (optional, off by default) → toggle it on in the side panel for the current tab. Delphi scans the page for question-shaped text (a `?` plus multiple `A) B) C)`-style choices) and adds two small buttons next to each one it finds:
+3. **Check this page** (side panel button, right-click → "Check this page with Delphi", or `Ctrl+Shift+C`) → screenshots the whole visible tab (no dragging) and asks the model to find and answer *every* question in it, returned as a numbered list. Screenshot-based like region capture, so it works inside iframes too — useful for LMS/knowledge-check pages (e.g. `.jsp`-based courses) where the question content isn't reachable by the DOM-based paths at all. Can take a while on local models since it's reasoning over a whole page, not one question.
+4. **Auto-detect** (optional, off by default) → toggle it on in the side panel for the current tab. Delphi scans the page for question-shaped text (a `?` plus multiple `A) B) C)`-style choices) and adds two small buttons next to each one it finds:
    - **Explain** — full reasoning, answer hidden behind reveal, rendered as a card next to that question.
    - **Answer** — skips straight to answer-only for that one question (regardless of the global mode set in Options), rendered as a small compact badge right where the buttons were, since there's no explanation to show.
 

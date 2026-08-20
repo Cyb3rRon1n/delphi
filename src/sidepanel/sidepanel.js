@@ -7,14 +7,28 @@ const toggle = document.getElementById("auto-toggle");
 const autoError = document.getElementById("auto-error");
 const historyEl = document.getElementById("history");
 const emptyEl = document.getElementById("empty");
+const checkPageBtn = document.getElementById("check-page");
 
 let currentTabId = null;
 
 async function refreshTab() {
   const [tab] = await api.tabs.query({ active: true, currentWindow: true });
   currentTabId = tab?.id ?? null;
+  resetCheckPageButton();
   await Promise.all([refreshAutoToggle(), refreshHistory()]);
 }
+
+function resetCheckPageButton() {
+  checkPageBtn.disabled = false;
+  checkPageBtn.textContent = "Check this page";
+}
+
+checkPageBtn.addEventListener("click", () => {
+  if (currentTabId == null) return;
+  checkPageBtn.disabled = true;
+  checkPageBtn.textContent = "Checking… (can take a while on local models)";
+  api.runtime.sendMessage({ type: "DELPHI_CHECK_PAGE", tabId: currentTabId });
+});
 
 async function refreshAutoToggle() {
   if (currentTabId == null) return;
@@ -68,7 +82,10 @@ document.getElementById("open-options").addEventListener("click", (e) => {
 api.tabs.onActivated.addListener(refreshTab);
 api.storage.onChanged.addListener((changes, area) => {
   if (area !== "session" || currentTabId == null) return;
-  if (changes[`history:${currentTabId}`]) refreshHistory();
+  if (changes[`history:${currentTabId}`]) {
+    refreshHistory();
+    resetCheckPageButton(); // a new entry means whatever was running finished
+  }
   if (changes[`auto:${currentTabId}`]) refreshAutoToggle();
 });
 

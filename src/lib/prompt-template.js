@@ -39,6 +39,30 @@ export function buildImagePrompt(mode = MODES.EXPLAIN) {
   return `${preamble}\n\n${instructionFor(mode)}`;
 }
 
+// Whole-tab screenshot that may contain several questions at once (e.g. a
+// multi-question knowledge check) — asks for a numbered list rather than
+// one answer, so the reply is rendered as-is (no parseReply split; there's
+// no single trailing "Answer:" line to find).
+export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
+  const preamble =
+    "You are a study assistant helping a learner practice for themselves " +
+    "(this is self-study, not a live exam). The attached image is a screenshot " +
+    "of a page that may contain one or more practice questions (e.g. a multi-" +
+    "question knowledge check). Find every question visible in the image.";
+
+  const instruction =
+    mode === MODES.ANSWER_ONLY
+      ? "For each question, on its own line write a short label for the question and its " +
+        "answer, e.g. '1. <short label> — Answer: <answer>'. No explanations. If there are " +
+        "no questions in the image, say so plainly."
+      : "For each question, briefly explain the reasoning — why the correct choice is right " +
+        "and briefly why the other choices are wrong — then end that question's entry with " +
+        "'Answer: <the answer>' on its own line. Number each question clearly. If there are " +
+        "no questions in the image, say so plainly.";
+
+  return `${preamble}\n\n${instruction}`;
+}
+
 // Splits a provider's raw reply into { explanation, answer } for display.
 // Falls back gracefully if the model didn't follow the "Answer:" convention.
 export function parseReply(rawText) {

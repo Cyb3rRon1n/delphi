@@ -1,7 +1,7 @@
 // Minimal assert-based self-check. No framework, no fixtures.
 // Run with: node tests/test_prompt_template.js
 import assert from "node:assert/strict";
-import { buildPrompt, buildImagePrompt, parseReply, MODES } from "../src/lib/prompt-template.js";
+import { buildPrompt, buildImagePrompt, buildPageCheckPrompt, parseReply, MODES } from "../src/lib/prompt-template.js";
 import { looksLikeQuestion } from "../src/lib/detect-questions.js";
 
 // buildPrompt
@@ -32,6 +32,13 @@ assert.match(imgPrompt, /attached image/);
 assert.match(imgPrompt, /final line write/);
 const imgAnswerOnly = buildImagePrompt(MODES.ANSWER_ONLY);
 assert.match(imgAnswerOnly, /No explanation/);
+
+// buildPageCheckPrompt
+const pageCheckPrompt = buildPageCheckPrompt(MODES.EXPLAIN);
+assert.match(pageCheckPrompt, /every question visible/);
+assert.match(pageCheckPrompt, /Number each question/);
+const pageCheckAnswerOnly = buildPageCheckPrompt(MODES.ANSWER_ONLY);
+assert.match(pageCheckAnswerOnly, /No explanations/);
 
 // looksLikeQuestion
 assert.equal(

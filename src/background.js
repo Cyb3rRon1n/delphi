@@ -1,4 +1,4 @@
-import { buildPrompt, buildImagePrompt, parseReply } from "./lib/prompt-template.js";
+import { buildPrompt, buildImagePrompt, buildPageCheckPrompt, parseReply } from "./lib/prompt-template.js";
 import { generate, getSettings } from "./providers/index.js";
 
 // browser.* (Firefox, promise-only) when present, else chrome.* (Chrome/Brave).
@@ -6,6 +6,7 @@ const api = globalThis.browser ?? chrome;
 
 const MENU_EXPLAIN_SELECTION = "delphi-explain-selection";
 const MENU_CAPTURE_REGION = "delphi-capture-region";
+const MENU_CHECK_PAGE = "delphi-check-page";
 
 // Chrome/Brave: clicking the toolbar icon opens the side panel directly.
 // Firefox has no sidePanel API — it gets its own dedicated toolbar button
@@ -29,6 +30,11 @@ api.runtime.onInstalled.addListener(() => {
     title: "Capture region with Delphi",
     contexts: ["page", "image"],
   });
+  api.contextMenus.create({
+    id: MENU_CHECK_PAGE,
+    title: "Check this page with Delphi",
+    contexts: ["page"],
+  });
 });
 
 api.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -37,6 +43,8 @@ api.contextMenus.onClicked.addListener(async (info, tab) => {
     runForText(tab.id, info.selectionText);
   } else if (info.menuItemId === MENU_CAPTURE_REGION) {
     startCapture(tab.id);
+  } else if (info.menuItemId === MENU_CHECK_PAGE) {
+    checkPage(tab.id);
   }
 });
 
@@ -56,6 +64,8 @@ api.commands.onCommand.addListener(async (command) => {
     if (selectionText) runForText(tab.id, selectionText);
   } else if (command === "capture-region") {
     startCapture(tab.id);
+  } else if (command === "check-page") {
+    checkPage(tab.id);
   }
 });
 
@@ -118,6 +128,30 @@ async function runForImage(tabId, imageDataUrl) {
   const result = await explainImage(imageDataUrl);
   await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
   await pushHistory(tabId, { question: "[captured image]", ...result });
+}
+
+// "Check this page" — captures the whole visible tab (not a dragged
+// region) and asks the model to find and answer *every* question in it.
+// Screenshot-based like region capture, so it works inside iframes too
+// (e.g. JSP/LMS knowledge checks) where DOM-based paths can't see anything.
+// The reply can list several questions, so it's rendered as raw text
+// (explanation only, no single answer to extract) rather than through
+// parseReply, which assumes one trailing "Answer:" line.
+async function checkPage(tabId) {
+  await ensureContentScript(tabId);
+  await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
+  const settings = await getSettings();
+  let result;
+  try {
+    const { windowId } = await api.tabs.get(tabId);
+    const shot = await api.tabs.captureVisibleTab(windowId, { format: "png" });
+    const reply = await generate(buildPageCheckPrompt(settings.mode), shot);
+    result = { mode: settings.mode, explanation: reply, answer: null };
+  } catch (err) {
+    result = { error: err.message };
+  }
+  await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
+  await pushHistory(tabId, { question: "[page check]", ...result });
 }
 
 async function ensureContentScript(tabId) {
@@ -194,6 +228,11 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === "DELPHI_AUTO_STOPPED_LOCALLY" && tabId) {
     api.storage.session.set({ [`auto:${tabId}`]: false });
+    return;
+  }
+
+  if (msg.type === "DELPHI_CHECK_PAGE" && msg.tabId) {
+    checkPage(msg.tabId);
     return;
   }
 });
