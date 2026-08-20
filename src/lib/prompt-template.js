@@ -74,10 +74,16 @@ export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
 }
 
 // Splits a provider's raw reply into { explanation, answer } for display.
-// Falls back gracefully if the model didn't follow the "Answer:" convention.
+// Falls back gracefully if the model didn't follow the "Answer:" convention
+// at all. The prompt always asks for the literal "Answer:" — this also
+// catches a few near-miss phrasings a model sometimes uses instead,
+// especially across a longer multi-question reply where consistency slips.
+// Anchored to the start of a line (not "anywhere in the text") so it can't
+// false-match a word like "correct" showing up mid-explanation.
+const ANSWER_LINE = /(?:^|\n)\s*(?:Answer|The answer is|Correct answer(?: is)?)\s*:?\s*(.+)\s*$/is;
 export function parseReply(rawText) {
   const text = (rawText || "").trim();
-  const match = text.match(/Answer:\s*(.+)\s*$/is);
+  const match = text.match(ANSWER_LINE);
   if (!match) {
     return { explanation: text, answer: null };
   }

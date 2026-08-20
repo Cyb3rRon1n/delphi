@@ -30,6 +30,16 @@ const withAnswer = parseReply(
 assert.equal(withAnswer.answer, "B) 4");
 assert.match(withAnswer.explanation, /basic addition fact/);
 
+// near-miss phrasings a model sometimes uses instead of the literal "Answer:"
+assert.equal(parseReply("Some reasoning here.\nThe answer is C) 5").answer, "C) 5");
+assert.equal(parseReply("Some reasoning here.\nCorrect answer: D) 6").answer, "D) 6");
+assert.equal(parseReply("Some reasoning here.\nCorrect answer is E) 7").answer, "E) 7");
+// "correct" appearing mid-explanation must not false-match as the answer line
+assert.equal(
+  parseReply("B is correct because it sums to 4. A is not correct.").answer,
+  null
+);
+
 const withoutAnswer = parseReply("Just some rambling text, no marker.");
 assert.equal(withoutAnswer.answer, null);
 assert.equal(withoutAnswer.explanation, "Just some rambling text, no marker.");
