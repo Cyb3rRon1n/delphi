@@ -224,8 +224,18 @@ async function checkPage(tabId) {
   try {
     const { windowId } = await api.tabs.get(tabId);
     const shots = await captureFullPage(tabId, windowId);
-    const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
-    const parsed = parsePageCheckReply(reply);
+
+    let reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
+    let parsed = parsePageCheckReply(reply);
+    if (!parsed) {
+      // One automatic retry on a total format failure (not just a few
+      // missing answers within an otherwise-parsed reply) — same
+      // screenshots, a fresh generation attempt, before falling back to
+      // the raw-text blob. This is what used to require manually clicking
+      // "Check this page" again.
+      reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
+      parsed = parsePageCheckReply(reply);
+    }
 
     if (parsed) {
       // One history entry per question — same rendering the side panel

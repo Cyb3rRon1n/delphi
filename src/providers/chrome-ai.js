@@ -19,9 +19,23 @@ export async function generate(prompt, config = {}, images = null) {
       "Chrome's built-in AI (LanguageModel) isn't available in this browser/version."
     );
   }
-  const session = await LanguageModel.create(
-    images?.length ? { expectedInputs: [{ type: "image" }] } : undefined
-  );
+  const createOptions = images?.length ? { expectedInputs: [{ type: "image" }] } : {};
+  // Lower-than-default temperature: this is a structured-format task (one
+  // point per line, a literal "Answer:" line), not creative writing — less
+  // sampling randomness means more consistent adherence to that format
+  // from one run to the next. Chrome requires topK and temperature to be
+  // set together, so read the model's own valid range via params() rather
+  // than guessing a topK that might be out of bounds for it.
+  try {
+    const params = await LanguageModel.params();
+    if (params) {
+      createOptions.temperature = Math.min(0.3, params.maxTemperature ?? 0.3);
+      createOptions.topK = params.defaultTopK ?? params.maxTopK ?? 3;
+    }
+  } catch {
+    // params() unsupported on this Chrome version — just use its defaults.
+  }
+  const session = await LanguageModel.create(createOptions);
   try {
     if (!images?.length) return await session.prompt(prompt);
 

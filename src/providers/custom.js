@@ -32,6 +32,10 @@ export async function generate(prompt, config = {}, images = null) {
     body: JSON.stringify({
       model: config.model || "gpt-4o-mini",
       messages: [{ role: "user", content }],
+      // Lower-than-default temperature: a structured-format task (one point
+      // per line, a literal "Answer:" line) benefits from less sampling
+      // randomness — more consistent format adherence run to run.
+      temperature: 0.3,
     }),
   });
   if (res.status === 429) {

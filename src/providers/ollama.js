@@ -26,7 +26,10 @@ export async function generate(prompt, config = {}, images = null) {
   const baseUrl = config.baseUrl || DEFAULTS.baseUrl;
   const model = images?.length ? config.visionModel || DEFAULTS.visionModel : config.model || DEFAULTS.model;
 
-  const body = { model, prompt, stream: false };
+  // Lower-than-default temperature: this is a structured-format task (one
+  // point per line, a literal "Answer:" line), not creative writing — less
+  // sampling randomness means more consistent format adherence run to run.
+  const body = { model, prompt, stream: false, options: { temperature: 0.3 } };
   if (images?.length) body.images = images.map((url) => url.replace(/^data:.*?;base64,/, ""));
 
   const res = await fetch(`${baseUrl}/api/generate`, {
