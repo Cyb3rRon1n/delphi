@@ -37,18 +37,30 @@
         border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; }
       .entry .err { color: #f38ba8; }
       #auto-error { display: none; color: #f38ba8; margin: 0 0 10px; }
-      #check-page { display: block; width: 100%; box-sizing: border-box; cursor: pointer;
-        background: #89b4fa; color: #1e1e2e; border: none; border-radius: 6px; padding: 8px;
-        font-size: 12px; font-weight: 600; margin: 10px 0; }
-      #check-page:disabled { opacity: 0.6; cursor: default; }
+      .actions { display: flex; gap: 8px; margin: 10px 0 4px; }
+      .actions button { flex: 1; cursor: pointer; border: none; border-radius: 6px; padding: 8px;
+        font-size: 12px; font-weight: 600; }
+      .actions button:disabled { opacity: 0.6; cursor: default; }
+      #capture-region { background: #94e2d5; color: #1e1e2e; }
+      #check-page { background: #89b4fa; color: #1e1e2e; }
+      #busy-indicator { display: none; align-items: center; gap: 8px; background: #313244;
+        border-radius: 6px; padding: 8px 10px; margin: 10px 0; font-size: 12px; color: #f9e2af; }
+      #busy-indicator .spinner { width: 12px; height: 12px; border-radius: 50%; flex: none;
+        border: 2px solid #45475a; border-top-color: #f9e2af; animation: delphi-spin 0.8s linear infinite; }
+      @keyframes delphi-spin { to { transform: rotate(360deg); } }
     </style>
   </head>
   <body>
     <h1><svg class="mark" viewBox="0 0 128 128"><rect width="128" height="128" rx="26" fill="#1e1e2e"/><path d="M64 26 L104 96 L24 96 Z" fill="#89b4fa"/></svg> Delphi</h1>
-    <p class="hint">Select text → right-click → "Explain with Delphi", or drag-capture a region. Answers for the active tab collect below.</p>
+    <p class="hint">Select text → right-click → "Explain with Delphi". Answers for the active tab collect below.</p>
 
-    <button id="check-page">Check this page</button>
-    <p class="hint" style="margin-top: -6px;">Scrolls through the whole page (not just what's visible) and finds/answers every question — works inside iframes too (e.g. LMS knowledge checks) where the other paths can't see anything. Stay on this tab while it runs.</p>
+    <div class="actions">
+      <button id="capture-region">Capture region</button>
+      <button id="check-page">Check this page</button>
+    </div>
+    <p class="hint" style="margin-top: -6px;">"Capture region" drags a box around a question that isn't selectable text. "Check this page" scrolls the whole page and finds/answers every question — works inside iframes too (e.g. LMS knowledge checks). Stay on this tab while either runs.</p>
+
+    <div id="busy-indicator"><span class="spinner"></span> Delphi is thinking — stay on this tab until it finishes.</div>
 
     <label class="toggle"><input type="checkbox" id="auto-toggle" /> Auto-detect questions on this tab</label>
     <p id="auto-error"></p>

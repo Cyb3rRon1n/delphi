@@ -8,6 +8,8 @@ const autoError = document.getElementById("auto-error");
 const historyEl = document.getElementById("history");
 const emptyEl = document.getElementById("empty");
 const checkPageBtn = document.getElementById("check-page");
+const captureRegionBtn = document.getElementById("capture-region");
+const busyEl = document.getElementById("busy-indicator");
 const copyHistoryBtn = document.getElementById("copy-history");
 const clearHistoryBtn = document.getElementById("clear-history");
 
@@ -16,20 +18,33 @@ let currentTabId = null;
 async function refreshTab() {
   const [tab] = await api.tabs.query({ active: true, currentWindow: true });
   currentTabId = tab?.id ?? null;
-  resetCheckPageButton();
-  await Promise.all([refreshAutoToggle(), refreshHistory()]);
+  await Promise.all([refreshAutoToggle(), refreshHistory(), refreshBusy()]);
 }
 
-function resetCheckPageButton() {
-  checkPageBtn.disabled = false;
-  checkPageBtn.textContent = "Check this page";
+// Driven entirely by background's own busy:${tabId} flag (set for the
+// duration of any actual generate() call — selection, region capture,
+// check-page) rather than a local guess, so it stays correct regardless of
+// which surface triggered the action (right-click menu, keyboard shortcut,
+// or these buttons) and naturally re-enables itself once the real work is
+// done, not just once a click handler assumes it should be.
+async function refreshBusy() {
+  if (currentTabId == null) return;
+  const key = `busy:${currentTabId}`;
+  const stored = await api.storage.session.get(key);
+  const busy = Boolean(stored[key]);
+  busyEl.style.display = busy ? "flex" : "none";
+  checkPageBtn.disabled = busy;
+  captureRegionBtn.disabled = busy;
 }
 
 checkPageBtn.addEventListener("click", () => {
   if (currentTabId == null) return;
-  checkPageBtn.disabled = true;
-  checkPageBtn.textContent = "Checking… (can take a while on local models)";
   api.runtime.sendMessage({ type: "DELPHI_CHECK_PAGE", tabId: currentTabId });
+});
+
+captureRegionBtn.addEventListener("click", () => {
+  if (currentTabId == null) return;
+  api.runtime.sendMessage({ type: "DELPHI_CAPTURE_REGION", tabId: currentTabId });
 });
 
 async function refreshAutoToggle() {
@@ -132,11 +147,9 @@ document.getElementById("open-options").addEventListener("click", (e) => {
 api.tabs.onActivated.addListener(refreshTab);
 api.storage.onChanged.addListener((changes, area) => {
   if (area !== "session" || currentTabId == null) return;
-  if (changes[`history:${currentTabId}`]) {
-    refreshHistory();
-    resetCheckPageButton(); // a new entry means whatever was running finished
-  }
+  if (changes[`history:${currentTabId}`]) refreshHistory();
   if (changes[`auto:${currentTabId}`]) refreshAutoToggle();
+  if (changes[`busy:${currentTabId}`]) refreshBusy();
 });
 
 refreshTab();

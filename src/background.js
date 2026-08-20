@@ -133,6 +133,17 @@ async function pushHistory(tabId, entry) {
   await pushHistoryMany(tabId, [entry]);
 }
 
+// The side panel (and anything else watching this tab) reads this back via
+// storage.onChanged — the same live-update pattern history/auto-detect
+// already use, not a new broadcast mechanism. Covers the paths that had no
+// side-panel-visible feedback at all before (selection, region capture,
+// check-page) — auto-detect already shows its own per-button/badge status
+// directly on the page, so it doesn't set this (would just flicker on/off
+// repeatedly during a batch, adding noise instead of clarity).
+async function setBusy(tabId, busy) {
+  await api.storage.session.set({ [`busy:${tabId}`]: busy });
+}
+
 function snippet(text, max = 140) {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
@@ -142,17 +153,27 @@ function snippet(text, max = 140) {
 async function runForText(tabId, text) {
   await ensureContentScript(tabId);
   await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
-  const result = await explainText(text);
-  await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
-  await pushHistory(tabId, { question: snippet(text), ...result });
+  await setBusy(tabId, true);
+  try {
+    const result = await explainText(text);
+    await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
+    await pushHistory(tabId, { question: snippet(text), ...result });
+  } finally {
+    await setBusy(tabId, false);
+  }
 }
 
 async function runForImage(tabId, imageDataUrl) {
   await ensureContentScript(tabId);
   await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
-  const result = await explainImage(imageDataUrl);
-  await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
-  await pushHistory(tabId, { question: "[captured image]", ...result });
+  await setBusy(tabId, true);
+  try {
+    const result = await explainImage(imageDataUrl);
+    await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
+    await pushHistory(tabId, { question: "[captured image]", ...result });
+  } finally {
+    await setBusy(tabId, false);
+  }
 }
 
 // "Check this page" — captures the whole visible tab (not a dragged
@@ -220,6 +241,7 @@ async function captureFullPage(tabId, windowId) {
 async function checkPage(tabId) {
   await ensureContentScript(tabId);
   await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
+  await setBusy(tabId, true);
   const settings = await getSettings();
   try {
     const { windowId } = await api.tabs.get(tabId);
@@ -260,6 +282,8 @@ async function checkPage(tabId) {
     const result = { error: err.message };
     await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
     await pushHistory(tabId, { question: "[page check]", ...result });
+  } finally {
+    await setBusy(tabId, false);
   }
 }
 
@@ -345,6 +369,11 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
 
+  if (msg.type === "DELPHI_CAPTURE_REGION" && msg.tabId) {
+    startCapture(msg.tabId);
+    return;
+  }
+
   if (msg.type === "DELPHI_CLEAR_HISTORY" && msg.tabId) {
     api.storage.session.remove(`history:${msg.tabId}`);
     return;
@@ -398,9 +427,11 @@ api.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
     api.storage.session.remove(`auto:${tabId}`);
     api.storage.session.remove(`history:${tabId}`);
+    api.storage.session.remove(`busy:${tabId}`);
   }
 });
 api.tabs.onRemoved.addListener((tabId) => {
   api.storage.session.remove(`auto:${tabId}`);
   api.storage.session.remove(`history:${tabId}`);
+  api.storage.session.remove(`busy:${tabId}`);
 });

@@ -23,7 +23,9 @@ In every case, Delphi sends the content to an LLM with a prompt asking for reaso
 
 ## Side panel
 
-Click the toolbar icon (Chrome/Brave) to open Delphi as a docked side panel instead of a popup that closes on you — it stays open while you work through a page. It shows the auto-detect toggle and a running history of every answer given on the current tab (newest first), so you can scroll back through earlier questions instead of losing them once a floating card/panel closes. History is per-tab and clears on navigation, same as auto-detect.
+Click the toolbar icon (Chrome/Brave) to open Delphi as a docked side panel instead of a popup that closes on you — it stays open while you work through a page. It has **Capture region** and **Check this page** buttons (same as the right-click menu / keyboard shortcuts, just one click away without leaving the panel), the auto-detect toggle, and a running history of every answer given on the current tab (newest first). History is per-tab and clears on navigation, same as auto-detect.
+
+**While anything is actually running** (selection, region capture, or check-page — auto-detect already shows its own per-button/badge status directly on the page), the panel shows a "Delphi is thinking — stay on this tab until it finishes" banner with a spinner, and the two action buttons disable themselves. This reflects real background state (not a guess tied to whichever button you clicked), so it stays correct no matter which surface actually triggered the request.
 
 The bottom-right floating panel used for selection/region-capture results now shows the same answers, so it stays collapsed to a small "Δ" tab and no longer pops open on its own — click it to check the latest result, click it (or the ✕) to collapse again. With the side panel doing that job now, having both surfaces push the same content at you was just noise.
 
