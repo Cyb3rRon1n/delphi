@@ -216,7 +216,11 @@ async function checkPage(tabId) {
     const { windowId } = await api.tabs.get(tabId);
     const shots = await captureFullPage(tabId, windowId);
     const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
-    result = { mode: settings.mode, explanation: reply, answer: null };
+    // Diagnostic, not permanent — surfaces whether the "only sees the
+    // visible area" complaint is a capture bug (count is 1) or the model
+    // ignoring images past the first one (count is right but answers aren't).
+    const note = `(Analyzed ${shots.length} screenshot${shots.length === 1 ? "" : "s"} covering the page.)`;
+    result = { mode: settings.mode, explanation: `${note}\n\n${reply}`, answer: null };
   } catch (err) {
     result = { error: err.message };
   }
