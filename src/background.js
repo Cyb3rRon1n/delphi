@@ -194,11 +194,12 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-// Deliberately activeTab-only (no host_permissions) — see CLAUDE.md. That
-// means this can genuinely fail: the side panel can outlive the tab switch
-// that granted it access, so toggling auto-detect for a tab you switched to
-// *after* opening the panel has no valid grant. Fail soft with a message
-// the panel can show, rather than an uncaught Chrome permission error.
+// host_permissions (<all_urls>) makes this reliable regardless of tab
+// switches — see CLAUDE.md for why activeTab-only didn't work here: with
+// the side panel already open, re-clicking the toolbar icon to "refresh"
+// the grant turned out to be a no-op (nothing to open), so there was no
+// way to get a fresh grant for a tab switched to after the panel opened.
+// The try/catch stays as a defensive backstop, not the primary defense.
 async function setAuto(tabId, enabled) {
   if (!enabled) {
     await api.storage.session.set({ [`auto:${tabId}`]: false });

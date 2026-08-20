@@ -41,6 +41,10 @@ Configurable in the extension's Options page:
 
 **Firefox**: `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → select `manifest.json` in this directory. **Untested — two manifest keys tried for Firefox compat (`background.scripts`, `sidebar_action`) both broke Chrome loading and were reverted**, so whether the background script even starts on Firefox right now is unconfirmed. Try it and report what actually happens rather than assuming it works. No built-in on-device AI on Firefox either way (no Prompt API), so use Ollama or Custom API.
 
+## Permissions
+
+Delphi requests access to all sites (`host_permissions: ["<all_urls>"]`), which Chrome will show you as "Read and change all your data on all websites" when you install it. This is specifically for the side panel's auto-detect toggle to work reliably no matter which tab is active — Chrome only grants temporary per-tab access when you first open the panel or click the toolbar icon, and that grant doesn't carry over to tabs you switch to afterward while the panel stays open, so a narrower permission left the toggle broken most of the time in practice. It's still not used for anything passive: nothing runs, is scanned, or is sent anywhere until you click something — select text, drag-capture a region, or toggle auto-detect on a specific tab yourself.
+
 ## A note on limits
 
 Chrome's built-in AI has no cross-question cap worth worrying about — each explanation gets its own fresh model session, so nothing accumulates across a long "explain all" run. The only real per-question limit is a single question being too long for one session's own context window, which shows up as a plain, readable error on that question's card rather than a cryptic failure. A **custom API** provider is different: a hosted service's rate limit is a genuine shared constraint, so a 429 during a busy "explain all" run shows up as "Rate limited by the API — wait a moment, or switch provider" on that question, and the batch keeps going rather than aborting.
