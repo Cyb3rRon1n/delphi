@@ -22,11 +22,17 @@
   document.documentElement.appendChild(host);
   const shadow = host.attachShadow({ mode: "open" });
 
+  // Same results also land in the side panel's per-tab history now (see
+  // background.js's pushHistory), so this panel would just be showing the
+  // same thing twice if it stayed open — it starts collapsed to a small
+  // tab and only auto-expands once per new result, so it's available for
+  // people not currently looking at the side panel without nagging those who are.
   shadow.innerHTML = `
     <style>
-      .panel { all: initial; font: 14px/1.4 system-ui, sans-serif; display: block;
+      .panel { all: initial; font: 14px/1.4 system-ui, sans-serif; display: none;
         width: 320px; max-height: 60vh; overflow-y: auto; background: #1e1e2e; color: #cdd6f4;
         border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); padding: 14px; }
+      .panel.open { display: block; }
       .panel h3 { all: initial; display: block; font-weight: 600; font-size: 13px;
         color: #94e2d5; margin-bottom: 8px; }
       .panel p { all: initial; display: block; white-space: pre-wrap; margin: 0 0 8px; color: #cdd6f4; }
@@ -36,18 +42,27 @@
         color: #1e1e2e; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; }
       .panel .close { position: absolute; top: 10px; right: 12px; background: none; color: #cdd6f4; padding: 0; }
       .panel .err { color: #f38ba8; }
+      .mini-toggle { all: initial; pointer-events: auto; cursor: pointer; display: flex;
+        align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%;
+        background: #1e1e2e; color: #94e2d5; font: 14px system-ui, sans-serif; font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.35); }
+      .panel.open ~ .mini-toggle { display: none; }
     </style>
     <div class="panel" style="position: relative;">
-      <button class="close" title="Close">✕</button>
+      <button class="close" title="Minimize">✕</button>
       <h3>Delphi</h3>
       <div class="body">Thinking…</div>
     </div>
+    <button class="mini-toggle" title="Show Delphi">Δ</button>
   `;
-  shadow.querySelector(".close").addEventListener("click", () => (host.style.display = "none"));
+  const panelEl = shadow.querySelector(".panel");
+  const miniToggle = shadow.querySelector(".mini-toggle");
+  shadow.querySelector(".close").addEventListener("click", () => panelEl.classList.remove("open"));
+  miniToggle.addEventListener("click", () => panelEl.classList.toggle("open"));
 
   function renderResult(msg) {
     const body = shadow.querySelector(".body");
-    host.style.display = "block";
+    panelEl.classList.add("open");
     if (msg.type === "DELPHI_SHOW") {
       body.textContent = "Thinking…";
       return;
@@ -70,7 +85,9 @@
         background: #1e1e2e; color: #94e2d5; border-radius: 8px; padding: 6px 10px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.35); }
       .badge button { all: initial; cursor: pointer; font-size: 11px; }
+      .badge button:disabled { opacity: 0.4; cursor: default; }
       .badge .explain-all { color: #89b4fa; font-weight: 600; }
+      .badge .answer-all { color: #94e2d5; font-weight: 600; }
       .badge .stop { color: #f38ba8; }
       .auto-btn-group { all: initial; pointer-events: auto; position: fixed; display: flex; gap: 4px; z-index: 1; }
       .auto-btn { all: initial; pointer-events: auto; cursor: pointer;
@@ -89,15 +106,23 @@
       .auto-card .err { color: #f38ba8; }
       .auto-card .card-close { all: initial; cursor: pointer; float: right; background: none;
         color: #cdd6f4; font-size: 11px; padding: 0 0 4px 6px; }
+      .auto-answer-badge { all: initial; pointer-events: auto; position: fixed; display: flex;
+        align-items: center; gap: 6px; font: 11px system-ui, sans-serif; font-weight: 600;
+        background: #94e2d5; color: #1e1e2e; border-radius: 5px; padding: 3px 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 1; }
+      .auto-answer-badge.err { background: #f38ba8; }
+      .auto-answer-badge .badge-close { all: initial; cursor: pointer; font-size: 10px; }
     </style>
     <div class="badge">
       <span class="count">Delphi watching (0)</span>
       <button class="explain-all">explain all</button>
+      <button class="answer-all">answer all</button>
       <button class="stop">stop</button>
     </div>
   `;
   const countLabel = autoShadow.querySelector(".count");
   const explainAllBtn = autoShadow.querySelector(".explain-all");
+  const answerAllBtn = autoShadow.querySelector(".answer-all");
   autoShadow.querySelector(".stop").addEventListener("click", () => {
     stopAuto();
     api.runtime.sendMessage({ type: "DELPHI_AUTO_STOPPED_LOCALLY" });
@@ -105,7 +130,7 @@
 
   let detectFns = null;
   let autoObserver = null;
-  const blocks = new Map(); // element -> { btn: HTMLElement|null, card: HTMLElement|null }
+  const blocks = new Map(); // element -> { btn, card, answerBadge } — each HTMLElement|null
   let batchRunning = false;
   let batchCancelled = false;
 
@@ -152,7 +177,11 @@
     } catch (err) {
       result = { error: String(err?.message ?? err) };
     }
-    showCard(el, result);
+    if (modeOverride === "answer_only") {
+      showAnswerBadge(el, result);
+    } else {
+      showCard(el, result);
+    }
   }
 
   function showCard(el, result) {
@@ -179,15 +208,46 @@
     repositionAll();
   }
 
+  // Answer-only results have no explanation to show, so this renders as a
+  // compact badge in the same spot the buttons were, not a full card below.
+  function showAnswerBadge(el, result) {
+    const state = blocks.get(el);
+    if (!state) return;
+    state.btn?.remove();
+    state.btn = null;
+
+    const badge = document.createElement("div");
+    badge.className = result.error ? "auto-answer-badge err" : "auto-answer-badge";
+    const text = document.createElement("span");
+    text.textContent = result.error || `Answer: ${result.answer ?? "—"}`;
+    const close = document.createElement("button");
+    close.className = "badge-close";
+    close.textContent = "✕";
+    close.addEventListener("click", () => {
+      state.answerBadge?.remove();
+      state.answerBadge = null;
+      state.btn = createButtonGroup(el);
+      repositionAll();
+    });
+    badge.appendChild(text);
+    badge.appendChild(close);
+    autoShadow.appendChild(badge);
+    state.answerBadge = badge;
+    repositionAll();
+  }
+
   function repositionAll() {
     for (const [el, state] of blocks) {
       const r = el.getBoundingClientRect();
       const visible = r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight;
-      if (state.btn) {
-        state.btn.style.display = visible ? "block" : "none";
+      // Button group and answer badge sit where the buttons were; the full
+      // card sits below the block, since it's taller and shouldn't crowd it.
+      for (const el2 of [state.btn, state.answerBadge]) {
+        if (!el2) continue;
+        el2.style.display = visible ? "flex" : "none";
         if (visible) {
-          state.btn.style.top = `${Math.max(0, r.top)}px`;
-          state.btn.style.left = `${Math.max(0, r.right - 120)}px`;
+          el2.style.top = `${Math.max(0, r.top)}px`;
+          el2.style.left = `${Math.max(0, r.right - 120)}px`;
         }
       }
       if (state.card) {
@@ -204,12 +264,13 @@
     const found = detectFns.findQuestionBlocks(document.body);
     const seen = new Set(found);
     for (const el of found) {
-      if (!blocks.has(el)) blocks.set(el, { btn: createButtonGroup(el), card: null });
+      if (!blocks.has(el)) blocks.set(el, { btn: createButtonGroup(el), card: null, answerBadge: null });
     }
     for (const [el, state] of blocks) {
       if (!seen.has(el) || !document.contains(el)) {
         state.btn?.remove();
         state.card?.remove();
+        state.answerBadge?.remove();
         blocks.delete(el);
       }
     }
@@ -244,6 +305,7 @@
     for (const state of blocks.values()) {
       state.btn?.remove();
       state.card?.remove();
+      state.answerBadge?.remove();
     }
     blocks.clear();
     autoHost.style.display = "none";
@@ -252,35 +314,47 @@
   // Sequential, not parallel — a local model (on-device or CPU Ollama) is a
   // single shared resource; running many at once wouldn't be faster, just
   // contended. One click starts it, one click cancels it, still consistent
-  // with "every LLM call is the direct result of a click."
+  // with "every LLM call is the direct result of a click." Same batch loop
+  // for both buttons — only the modeOverride and which button shows
+  // "cancel" differ.
   explainAllBtn.addEventListener("click", () => {
     if (batchRunning) {
       batchCancelled = true;
       return;
     }
-    startBatch();
+    startBatch(null, explainAllBtn, answerAllBtn, "explain all", "Explaining");
+  });
+  answerAllBtn.addEventListener("click", () => {
+    if (batchRunning) {
+      batchCancelled = true;
+      return;
+    }
+    startBatch("answer_only", answerAllBtn, explainAllBtn, "answer all", "Answering");
   });
 
-  async function startBatch() {
+  async function startBatch(modeOverride, activeBtn, otherBtn, idleLabel, verb) {
     const pending = Array.from(blocks.entries()).filter(([, state]) => state.btn);
     if (pending.length === 0) return;
     batchRunning = true;
     batchCancelled = false;
-    explainAllBtn.textContent = "cancel";
+    activeBtn.textContent = "cancel";
+    otherBtn.disabled = true;
 
     let failed = 0;
     for (let i = 0; i < pending.length; i++) {
       if (batchCancelled) break;
       const [el, state] = pending[i];
-      countLabel.textContent = `Explaining ${i + 1} of ${pending.length}${failed ? ` (${failed} failed)` : ""}…`;
+      countLabel.textContent = `${verb} ${i + 1} of ${pending.length}${failed ? ` (${failed} failed)` : ""}…`;
       if (!state.btn || !document.contains(el)) continue; // answered individually or removed mid-batch
-      await explainBlock(el, state.btn);
-      if (blocks.get(el)?.card?.querySelector(".err")) failed++;
+      await explainBlock(el, state.btn, modeOverride);
+      const s = blocks.get(el);
+      if (s?.card?.querySelector(".err") || s?.answerBadge?.classList.contains("err")) failed++;
     }
 
     batchRunning = false;
     batchCancelled = false;
-    explainAllBtn.textContent = "explain all";
+    activeBtn.textContent = idleLabel;
+    otherBtn.disabled = false;
     updateBadge();
   }
 
