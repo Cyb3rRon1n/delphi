@@ -45,10 +45,14 @@ api.commands.onCommand.addListener(async (command) => {
   if (!tab?.id) return;
 
   if (command === "explain-selection") {
-    const [{ result: selectionText }] = await api.scripting.executeScript({
-      target: { tabId: tab.id },
+    // allFrames: a selection made inside an iframe (common for LMS/quiz
+    // content) lives in that iframe's own document — the top frame alone
+    // wouldn't see it. Picks the first frame that actually has a selection.
+    const results = await api.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
       func: () => window.getSelection().toString(),
     });
+    const selectionText = results.map((r) => r.result).find((t) => t && t.trim());
     if (selectionText) runForText(tab.id, selectionText);
   } else if (command === "capture-region") {
     startCapture(tab.id);
