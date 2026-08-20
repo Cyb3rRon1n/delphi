@@ -72,9 +72,11 @@
       .badge button { all: initial; cursor: pointer; font-size: 11px; }
       .badge .explain-all { color: #89b4fa; font-weight: 600; }
       .badge .stop { color: #f38ba8; }
-      .auto-btn { all: initial; pointer-events: auto; position: fixed; cursor: pointer;
+      .auto-btn-group { all: initial; pointer-events: auto; position: fixed; display: flex; gap: 4px; z-index: 1; }
+      .auto-btn { all: initial; pointer-events: auto; cursor: pointer;
         font: 11px system-ui, sans-serif; font-weight: 600; background: #89b4fa; color: #1e1e2e;
-        border-radius: 5px; padding: 3px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 1; }
+        border-radius: 5px; padding: 3px 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+      .auto-btn-answer { background: #94e2d5; }
       .auto-btn:disabled { opacity: 0.6; cursor: default; }
       .auto-card { all: initial; pointer-events: auto; position: fixed; width: 280px;
         font: 13px/1.4 system-ui, sans-serif; background: #1e1e2e; color: #cdd6f4;
@@ -120,22 +122,33 @@
     countLabel.textContent = `Delphi watching (${blocks.size})`;
   }
 
-  function createExplainButton(el) {
-    const btn = document.createElement("button");
-    btn.className = "auto-btn";
-    btn.textContent = "Explain";
-    btn.addEventListener("click", () => explainBlock(el, btn));
-    autoShadow.appendChild(btn);
-    return btn;
+  // Two quick actions per question: "Explain" (full reasoning, answer
+  // hidden behind reveal — whatever the global mode is set to) and
+  // "Answer" (forces answer_only for just this one call, regardless of
+  // the global Options mode) — a per-question override, not a settings change.
+  function createButtonGroup(el) {
+    const group = document.createElement("div");
+    group.className = "auto-btn-group";
+    const explainBtn = document.createElement("button");
+    explainBtn.className = "auto-btn";
+    explainBtn.textContent = "Explain";
+    explainBtn.addEventListener("click", () => explainBlock(el, group, null));
+    const answerBtn = document.createElement("button");
+    answerBtn.className = "auto-btn auto-btn-answer";
+    answerBtn.textContent = "Answer";
+    answerBtn.addEventListener("click", () => explainBlock(el, group, "answer_only"));
+    group.appendChild(explainBtn);
+    group.appendChild(answerBtn);
+    autoShadow.appendChild(group);
+    return group;
   }
 
-  async function explainBlock(el, btn) {
-    btn.disabled = true;
-    btn.textContent = "…";
+  async function explainBlock(el, group, modeOverride) {
+    for (const b of group.querySelectorAll("button")) b.disabled = true;
     const text = el.innerText ?? el.textContent ?? "";
     let result;
     try {
-      result = await api.runtime.sendMessage({ type: "DELPHI_EXPLAIN_TEXT", text });
+      result = await api.runtime.sendMessage({ type: "DELPHI_EXPLAIN_TEXT", text, mode: modeOverride });
     } catch (err) {
       result = { error: String(err?.message ?? err) };
     }
@@ -156,7 +169,7 @@
     close.addEventListener("click", () => {
       state.card?.remove();
       state.card = null;
-      state.btn = createExplainButton(el);
+      state.btn = createButtonGroup(el);
       repositionAll();
     });
     card.appendChild(close);
@@ -174,7 +187,7 @@
         state.btn.style.display = visible ? "block" : "none";
         if (visible) {
           state.btn.style.top = `${Math.max(0, r.top)}px`;
-          state.btn.style.left = `${Math.max(0, r.right - 60)}px`;
+          state.btn.style.left = `${Math.max(0, r.right - 120)}px`;
         }
       }
       if (state.card) {
@@ -191,7 +204,7 @@
     const found = detectFns.findQuestionBlocks(document.body);
     const seen = new Set(found);
     for (const el of found) {
-      if (!blocks.has(el)) blocks.set(el, { btn: createExplainButton(el), card: null });
+      if (!blocks.has(el)) blocks.set(el, { btn: createButtonGroup(el), card: null });
     }
     for (const [el, state] of blocks) {
       if (!seen.has(el) || !document.contains(el)) {

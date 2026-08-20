@@ -69,9 +69,13 @@ async function runGenerate(mode, run) {
   }
 }
 
-async function explainText(text) {
+// modeOverride, when given, wins over the global Options mode — used by
+// auto-detect's per-question "Answer" button to force answer_only for just
+// that one call without changing the user's saved default.
+async function explainText(text, modeOverride = null) {
   const settings = await getSettings();
-  return runGenerate(settings.mode, () => generate(buildPrompt(text, settings.mode)));
+  const mode = modeOverride || settings.mode;
+  return runGenerate(mode, () => generate(buildPrompt(text, mode)));
 }
 
 async function explainImage(imageDataUrl) {
@@ -165,7 +169,7 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // can render the result inline next to the specific question and, for a
   // batch, await each one before starting the next.
   if (msg.type === "DELPHI_EXPLAIN_TEXT" && tabId) {
-    explainText(msg.text).then((result) => {
+    explainText(msg.text, msg.mode).then((result) => {
       pushHistory(tabId, { question: snippet(msg.text), ...result });
       sendResponse(result);
     });
