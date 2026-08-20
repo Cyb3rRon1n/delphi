@@ -18,7 +18,9 @@ In every case, Delphi sends the content to an LLM with a prompt asking for reaso
 
 ## Side panel
 
-Click the toolbar icon (Chrome/Brave) to open Delphi as a docked side panel instead of a popup that closes on you — it stays open while you work through a page. It shows the auto-detect toggle and a running history of every answer given on the current tab (newest first), so you can scroll back through earlier questions instead of losing them once a floating card/panel closes. History is per-tab and clears on navigation, same as auto-detect. Firefox gets an equivalent dedicated sidebar button instead (no imperative API there — it just toggles).
+Click the toolbar icon (Chrome/Brave) to open Delphi as a docked side panel instead of a popup that closes on you — it stays open while you work through a page. It shows the auto-detect toggle and a running history of every answer given on the current tab (newest first), so you can scroll back through earlier questions instead of losing them once a floating card/panel closes. History is per-tab and clears on navigation, same as auto-detect.
+
+**Firefox doesn't have this yet** — its own sidebar mechanism (`sidebar_action`) is a different manifest key than Chrome's `side_panel`, and Chrome errors on unrecognized keys, so it can't just be added alongside without a per-browser build. Firefox's toolbar icon opens Options instead for now.
 
 ## LLM providers
 

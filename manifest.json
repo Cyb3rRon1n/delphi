@@ -22,11 +22,6 @@
   "side_panel": {
     "default_path": "src/sidepanel/sidepanel.html"
   },
-  "sidebar_action": {
-    "default_panel": "src/sidepanel/sidepanel.html",
-    "default_icon": "icons/icon48.png",
-    "default_title": "Delphi"
-  },
   "options_page": "src/options/options.html",
   "icons": {
     "16": "icons/icon16.png",
