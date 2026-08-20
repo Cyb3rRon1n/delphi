@@ -19,6 +19,7 @@
       .entry button { cursor: pointer; background: #89b4fa; color: #1e1e2e; border: none;
         border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; }
       .entry .err { color: #f38ba8; }
+      #auto-error { display: none; color: #f38ba8; margin: 0 0 10px; }
     </style>
   </head>
   <body>
@@ -26,6 +27,7 @@
     <p class="hint">Select text → right-click → "Explain with Delphi", or drag-capture a region. Answers for the active tab collect below.</p>
 
     <label class="toggle"><input type="checkbox" id="auto-toggle" /> Auto-detect questions on this tab</label>
+    <p id="auto-error"></p>
     <a href="#" id="open-options">Settings</a>
 
     <hr />

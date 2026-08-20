@@ -4,6 +4,7 @@ import { buildResultBody } from "../lib/render-result.js";
 const api = globalThis.browser ?? chrome;
 
 const toggle = document.getElementById("auto-toggle");
+const autoError = document.getElementById("auto-error");
 const historyEl = document.getElementById("history");
 const emptyEl = document.getElementById("empty");
 
@@ -43,9 +44,20 @@ function renderHistory(entries) {
   }
 }
 
-toggle.addEventListener("change", () => {
+toggle.addEventListener("change", async () => {
   if (currentTabId == null) return;
-  api.runtime.sendMessage({ type: "DELPHI_SET_AUTO", tabId: currentTabId, enabled: toggle.checked });
+  const result = await api.runtime.sendMessage({
+    type: "DELPHI_SET_AUTO",
+    tabId: currentTabId,
+    enabled: toggle.checked,
+  });
+  if (result?.ok) {
+    autoError.style.display = "none";
+  } else {
+    toggle.checked = false; // it didn't actually turn on — don't show a state that isn't real
+    autoError.textContent = result?.error || "Couldn't enable auto-detect on this tab.";
+    autoError.style.display = "block";
+  }
 });
 
 document.getElementById("open-options").addEventListener("click", (e) => {

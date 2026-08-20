@@ -184,8 +184,8 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === "DELPHI_SET_AUTO") {
-    setAuto(msg.tabId, msg.enabled);
-    return;
+    setAuto(msg.tabId, msg.enabled).then(sendResponse);
+    return true; // async response
   }
 
   if (msg.type === "DELPHI_AUTO_STOPPED_LOCALLY" && tabId) {
@@ -194,18 +194,33 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+// Deliberately activeTab-only (no host_permissions) — see CLAUDE.md. That
+// means this can genuinely fail: the side panel can outlive the tab switch
+// that granted it access, so toggling auto-detect for a tab you switched to
+// *after* opening the panel has no valid grant. Fail soft with a message
+// the panel can show, rather than an uncaught Chrome permission error.
 async function setAuto(tabId, enabled) {
-  await api.storage.session.set({ [`auto:${tabId}`]: enabled });
-  if (enabled) {
-    await ensureContentScript(tabId);
-    await api.tabs.sendMessage(tabId, { type: "DELPHI_AUTO_ON" });
-  } else {
+  if (!enabled) {
+    await api.storage.session.set({ [`auto:${tabId}`]: false });
     try {
       await api.tabs.sendMessage(tabId, { type: "DELPHI_AUTO_OFF" });
     } catch {
       // content script may not be present (e.g. tab already navigated) — nothing to do
     }
+    return { ok: true };
   }
+
+  try {
+    await ensureContentScript(tabId);
+  } catch {
+    return {
+      ok: false,
+      error: "Can't access this tab yet — click the toolbar icon once while on it, then try the toggle again.",
+    };
+  }
+  await api.storage.session.set({ [`auto:${tabId}`]: true });
+  await api.tabs.sendMessage(tabId, { type: "DELPHI_AUTO_ON" });
+  return { ok: true };
 }
 
 // Auto-detect is scoped to the current page load only — never silently
