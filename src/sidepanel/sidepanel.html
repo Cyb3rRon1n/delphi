@@ -12,8 +12,10 @@
       hr { border: none; border-top: 1px solid #313244; margin: 12px 0; }
       #empty { color: #888; }
       .entry { background: #313244; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
-      .entry .question { font-weight: 600; color: #94e2d5; margin: 0 0 6px; white-space: pre-wrap; }
-      .entry p { white-space: pre-wrap; margin: 0 0 8px; }
+      .entry summary { font-weight: 600; color: #94e2d5; white-space: pre-wrap; cursor: pointer; }
+      .entry summary::marker { color: #89b4fa; }
+      .entry[open] summary { margin-bottom: 6px; }
+      .entry p { white-space: pre-wrap; margin: 8px 0; }
       .entry .answer { display: none; background: #1e1e2e; border-radius: 6px; padding: 8px; margin-top: 6px; }
       .entry .answer.revealed { display: block; }
       .entry button { cursor: pointer; background: #89b4fa; color: #1e1e2e; border: none;
@@ -31,7 +33,7 @@
     <p class="hint">Select text → right-click → "Explain with Delphi", or drag-capture a region. Answers for the active tab collect below.</p>
 
     <button id="check-page">Check this page</button>
-    <p class="hint" style="margin-top: -6px;">Screenshots the whole visible tab and finds/answers every question in it — works inside iframes too (e.g. LMS knowledge checks) where the other paths can't see anything.</p>
+    <p class="hint" style="margin-top: -6px;">Scrolls through the whole page (not just what's visible) and finds/answers every question — works inside iframes too (e.g. LMS knowledge checks) where the other paths can't see anything. Stay on this tab while it runs.</p>
 
     <label class="toggle"><input type="checkbox" id="auto-toggle" /> Auto-detect questions on this tab</label>
     <p id="auto-error"></p>

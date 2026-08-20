@@ -60,9 +60,12 @@
   shadow.querySelector(".close").addEventListener("click", () => panelEl.classList.remove("open"));
   miniToggle.addEventListener("click", () => panelEl.classList.toggle("open"));
 
+  // Doesn't auto-open anymore — the side panel already shows the same
+  // result (via its history feed), so popping this open too was pure
+  // duplication for anyone with the side panel visible. Still updates
+  // silently so the "Δ" tab shows the latest whenever it is opened.
   function renderResult(msg) {
     const body = shadow.querySelector(".body");
-    panelEl.classList.add("open");
     if (msg.type === "DELPHI_SHOW") {
       body.textContent = "Thinking…";
       return;

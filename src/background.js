@@ -159,24 +159,37 @@ async function runForImage(tabId, imageDataUrl) {
 // on a local model, which is already the slow part (see withKeepAlive).
 const MAX_PAGE_CHECK_SHOTS = 8;
 
+// allFrames: the page that doesn't scroll (or the top frame reporting a
+// tiny scrollHeight) is a real, common case — LMS/course-player content is
+// often rendered inside an iframe with its own internal scroll, and the top
+// window never moves at all. Checking every frame and using whichever one
+// actually has the most content to scroll through covers both that case
+// and the plain top-level-scroll case with the same code path.
 async function getPageMetrics(tabId) {
-  const [{ result }] = await api.scripting.executeScript({
-    target: { tabId },
+  const results = await api.scripting.executeScript({
+    target: { tabId, allFrames: true },
     func: () => ({
       scrollHeight: document.documentElement.scrollHeight,
       viewportHeight: window.innerHeight,
-      originalScrollY: window.scrollY,
     }),
   });
-  return result;
+  return results
+    .map((r) => r.result)
+    .reduce((max, m) => (m.scrollHeight - m.viewportHeight > max.scrollHeight - max.viewportHeight ? m : max));
 }
 
 async function scrollTo(tabId, y) {
-  await api.scripting.executeScript({ target: { tabId }, func: (y) => window.scrollTo(0, y), args: [y] });
+  // Scroll every frame to the same Y — harmless no-op for a frame with
+  // nothing to scroll (it just clamps), correct for whichever one does.
+  await api.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    func: (y) => window.scrollTo(0, y),
+    args: [y],
+  });
 }
 
 async function captureFullPage(tabId, windowId) {
-  const { scrollHeight, viewportHeight, originalScrollY } = await getPageMetrics(tabId);
+  const { scrollHeight, viewportHeight } = await getPageMetrics(tabId);
 
   const positions = [0];
   while (positions[positions.length - 1] + viewportHeight < scrollHeight && positions.length < MAX_PAGE_CHECK_SHOTS) {
@@ -190,7 +203,7 @@ async function captureFullPage(tabId, windowId) {
     shots.push(await api.tabs.captureVisibleTab(windowId, { format: "png" }));
   }
 
-  await scrollTo(tabId, originalScrollY);
+  await scrollTo(tabId, 0); // simplest reliable reset across every frame, not just the one that scrolled
   return shots;
 }
 

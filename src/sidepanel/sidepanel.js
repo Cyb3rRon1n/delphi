@@ -43,19 +43,23 @@ async function refreshHistory() {
   renderHistory(stored[key] || []);
 }
 
+// Collapsed by default (native <details>, no custom JS needed) — a full
+// explanation per entry was a lot of text to scroll past just to browse
+// history. The most recent entry stays open, since that's usually the one
+// you actually want to read right after asking for it.
 function renderHistory(entries) {
   historyEl.innerHTML = "";
   emptyEl.style.display = entries.length ? "none" : "block";
-  for (const entry of [...entries].reverse()) {
-    const card = document.createElement("div");
-    card.className = "entry";
-    const q = document.createElement("p");
-    q.className = "question";
-    q.textContent = entry.question;
-    card.appendChild(q);
-    card.appendChild(buildResultBody(entry));
-    historyEl.appendChild(card);
-  }
+  [...entries].reverse().forEach((entry, i) => {
+    const details = document.createElement("details");
+    details.className = "entry";
+    details.open = i === 0;
+    const summary = document.createElement("summary");
+    summary.textContent = entry.question;
+    details.appendChild(summary);
+    details.appendChild(buildResultBody(entry));
+    historyEl.appendChild(details);
+  });
 }
 
 toggle.addEventListener("change", async () => {

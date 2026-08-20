@@ -25,7 +25,9 @@ In every case, Delphi sends the content to an LLM with a prompt asking for reaso
 
 Click the toolbar icon (Chrome/Brave) to open Delphi as a docked side panel instead of a popup that closes on you — it stays open while you work through a page. It shows the auto-detect toggle and a running history of every answer given on the current tab (newest first), so you can scroll back through earlier questions instead of losing them once a floating card/panel closes. History is per-tab and clears on navigation, same as auto-detect.
 
-The bottom-right floating panel used for selection/region-capture results now shows the same answers, so it starts collapsed to a small "Δ" tab instead of popping open — click it to expand, click it (or the ✕) to collapse again. It still auto-expands once when a new result comes in, so you don't need the side panel open to notice something happened.
+The bottom-right floating panel used for selection/region-capture results now shows the same answers, so it stays collapsed to a small "Δ" tab and no longer pops open on its own — click it to check the latest result, click it (or the ✕) to collapse again. With the side panel doing that job now, having both surfaces push the same content at you was just noise.
+
+**Side panel history is collapsed per entry too** — each answer shows just the question label until you click it, except the one you most recently asked for, which stays open. Click any entry to expand/collapse it.
 
 **Firefox doesn't have this yet** — its own sidebar mechanism (`sidebar_action`) is a different manifest key than Chrome's `side_panel`, and Chrome errors on unrecognized keys, so it can't just be added alongside without a per-browser build. Firefox's toolbar icon opens Options instead for now.
 
