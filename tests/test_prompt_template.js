@@ -38,6 +38,10 @@ assert.equal(
   looksLikeQuestion("What is 2+2?\nA) 3\nB) 4\nC) 5"),
   true
 );
+assert.equal(
+  looksLikeQuestion("What is 7 x 8? A) 54 B) 56 C) 58 D) 64"),
+  true
+); // inline choices on one line, not one-per-line — regression case
 assert.equal(looksLikeQuestion("A) 3 B) 4 C) 5"), false); // no '?'
 assert.equal(looksLikeQuestion("What is your favorite color?"), false); // no choices
 assert.equal(looksLikeQuestion("Just some ordinary paragraph text with no question."), false);

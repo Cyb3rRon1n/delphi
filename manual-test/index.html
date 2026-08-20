@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Delphi manual test page</title>
+    <style>
+      body { font: 16px/1.6 system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 16px; }
+      section { margin-bottom: 32px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; }
+      h2 { font-size: 14px; color: #666; margin: 0 0 12px; text-transform: uppercase; }
+      .distractor { border-style: dashed; color: #888; }
+      img { max-width: 100%; border: 1px solid #ddd; }
+    </style>
+  </head>
+  <body>
+    <h1>Delphi manual test page</h1>
+    <p>Serve this over HTTP (not <code>file://</code> — extensions need the "Allow access to file URLs" toggle for that, and it's simplest to skip it):</p>
+    <pre>cd ~/projects/github/repos/delphi/manual-test &amp;&amp; python3 -m http.server 8123</pre>
+    <p>Then open <code>http://localhost:8123/</code>.</p>
+
+    <section>
+      <h2>Test 1 — plain-paragraph question (selection + auto-detect)</h2>
+      <p id="q1">What is 7 x 8? A) 54 B) 56 C) 58 D) 64</p>
+      <p>Select the line above and try <em>Explain with Delphi</em> / <kbd>Ctrl+Shift+E</kbd>. It should also get an auto-detect "Explain" button when auto-detect is on.</p>
+    </section>
+
+    <section>
+      <h2>Test 2 — question + list choices (auto-detect, nested-block handling)</h2>
+      <div id="q2">
+        <p>Which planet is known as the Red Planet?</p>
+        <ul>
+          <li>A) Venus</li>
+          <li>B) Mars</li>
+          <li>C) Jupiter</li>
+          <li>D) Saturn</li>
+        </ul>
+      </div>
+      <p>The question and choices are in separate elements, wrapped in one <code>&lt;div&gt;</code> — checks that auto-detect flags the wrapper, not each piece separately.</p>
+    </section>
+
+    <section>
+      <h2>Test 3 — image-only question (region capture)</h2>
+      <img src="question.png" alt="a rendered practice question — not selectable text" />
+      <p>Right-click → <em>Capture region with Delphi</em> (or <kbd>Ctrl+Shift+D</kbd>), then drag a box around the image above. There's no selectable text here, so this only works via region capture.</p>
+    </section>
+
+    <section class="distractor">
+      <h2>Distractor A — question mark, no choices (should NOT get an auto-detect button)</h2>
+      <p>Isn't the weather nice today? It's been sunny all week.</p>
+    </section>
+
+    <section class="distractor">
+      <h2>Distractor B — lettered-looking text, no question mark (should NOT get an auto-detect button)</h2>
+      <p>A) apples B) oranges C) bananas are common fruits sold at the market.</p>
+    </section>
+  </body>
+</html>

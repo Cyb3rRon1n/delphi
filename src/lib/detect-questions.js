@@ -8,7 +8,9 @@ export function looksLikeQuestion(text) {
   const t = text.trim();
   if (t.length < 15 || t.length > 1000) return false;
   if (!/\?/.test(t)) return false;
-  const choiceLines = t.match(/(^|\n)\s*[A-Da-d][.):]\s+\S/g) || [];
+  // A choice marker at the start of the text, or preceded by any whitespace —
+  // covers both one-per-line lists and inline "A) x B) y" on a single line.
+  const choiceLines = t.match(/(^|\s)[A-Da-d][.):]\s+\S/g) || [];
   return choiceLines.length >= 2;
 }
 
