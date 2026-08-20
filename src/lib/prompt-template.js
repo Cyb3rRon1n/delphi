@@ -9,10 +9,11 @@ export const MODES = Object.freeze({
 function instructionFor(mode) {
   return mode === MODES.ANSWER_ONLY
     ? "Reply with only the letter/choice of the most likely correct answer. No explanation."
-    : "First give a brief explanation of the reasoning: why the correct choice is right, " +
-      "and briefly why the other choices are wrong (this is often the part practice tests " +
-      "skip, and it's the part that actually helps someone learn). Then on its own final " +
-      "line write 'Answer: <the answer>'.";
+    : "Keep it short and scannable, one point per line, not one dense paragraph: one line on " +
+      "why the correct choice is right, then one short line per incorrect choice explaining " +
+      "briefly why it's wrong (this is often the part practice tests skip, and it's the part " +
+      "that actually helps someone learn — but each point still gets its own line). Then, on " +
+      "its own final line by itself, write 'Answer: <the answer>'.";
 }
 
 export function buildPrompt(questionText, mode = MODES.EXPLAIN) {
@@ -63,8 +64,9 @@ export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
     "before the first block or after the last: a one-line question label, then a newline, then " +
     (mode === MODES.ANSWER_ONLY
       ? "'Answer: <the answer>'"
-      : "a brief explanation of the reasoning (why the correct choice is right and briefly why " +
-        "the others are wrong), then on its own line 'Answer: <the answer>'") +
+      : "one short line on why the correct choice is right, one short line per incorrect choice " +
+        "on why it's wrong (each point on its own line, not one dense paragraph), then on its " +
+        "own line 'Answer: <the answer>'") +
     ". Separate each question's block from the next with a line containing only ###. " +
     "If there are no questions across the images, just say so plainly with no ### blocks.";
 

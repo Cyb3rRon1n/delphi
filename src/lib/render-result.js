@@ -15,21 +15,39 @@ export function buildResultBody(result) {
     return body;
   }
   if (result.explanation) {
-    const p = document.createElement("p");
-    p.textContent = result.explanation;
-    body.appendChild(p);
+    // One <p> per line instead of one dense block — the prompt now
+    // explicitly asks for one point per line, so there's real structure
+    // here to split on. Falls back to a single paragraph if the model
+    // ignored that and just wrote one dense line anyway.
+    for (const line of result.explanation.split(/\n+/)) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const p = document.createElement("p");
+      p.textContent = trimmed;
+      body.appendChild(p);
+    }
   }
   if (result.answer) {
     if (result.mode === "answer_only") {
       const p = document.createElement("p");
-      p.textContent = `Answer: ${result.answer}`;
+      p.className = "answer-only-line";
+      const label = document.createElement("span");
+      label.className = "answer-label";
+      label.textContent = "Answer";
+      p.append(label, document.createTextNode(result.answer));
       body.appendChild(p);
     } else {
       const reveal = document.createElement("button");
       reveal.textContent = "Reveal answer";
       const answerBox = document.createElement("div");
       answerBox.className = "answer";
-      answerBox.textContent = `Answer: ${result.answer}`;
+      const label = document.createElement("div");
+      label.className = "answer-label";
+      label.textContent = "Answer";
+      const value = document.createElement("div");
+      value.className = "answer-value";
+      value.textContent = result.answer;
+      answerBox.append(label, value);
       reveal.addEventListener("click", () => {
         answerBox.classList.add("revealed");
         reveal.remove();

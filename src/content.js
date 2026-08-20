@@ -36,8 +36,15 @@
       .panel h3 { all: initial; display: block; font-weight: 600; font-size: 13px;
         color: #94e2d5; margin-bottom: 8px; }
       .panel p { all: initial; display: block; white-space: pre-wrap; margin: 0 0 8px; color: #cdd6f4; }
-      .panel .answer { display: none; background: #313244; border-radius: 6px; padding: 8px; margin-top: 6px; }
+      .panel .answer { display: none; background: #313244; border-radius: 6px; padding: 10px; margin-top: 8px; }
       .panel .answer.revealed { display: block; }
+      .panel .answer-label { all: initial; display: block; font: 10px system-ui, sans-serif;
+        text-transform: uppercase; letter-spacing: 0.06em; color: #94e2d5; margin-bottom: 3px; }
+      .panel .answer-value { all: initial; display: block; font: 700 15px system-ui, sans-serif; color: #cdd6f4; }
+      .panel .answer-only-line { all: initial; display: block; background: #313244; border-radius: 6px;
+        padding: 8px 10px; margin: 0 0 8px; font: 14px system-ui, sans-serif; color: #cdd6f4; }
+      .panel .answer-only-line .answer-label { all: initial; display: inline; font: 700 11px system-ui, sans-serif;
+        text-transform: uppercase; letter-spacing: 0.04em; color: #94e2d5; margin-right: 6px; }
       .panel button { all: initial; cursor: pointer; display: inline-block; background: #89b4fa;
         color: #1e1e2e; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; }
       .panel .close { position: absolute; top: 10px; right: 12px; background: none; color: #cdd6f4; padding: 0; }
@@ -102,8 +109,15 @@
         font: 13px/1.4 system-ui, sans-serif; background: #1e1e2e; color: #cdd6f4;
         border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); padding: 10px; z-index: 1; }
       .auto-card p { all: initial; display: block; white-space: pre-wrap; margin: 0 0 6px; color: #cdd6f4; }
-      .auto-card .answer { display: none; background: #313244; border-radius: 6px; padding: 6px; margin-top: 4px; }
+      .auto-card .answer { display: none; background: #313244; border-radius: 6px; padding: 8px; margin-top: 6px; }
       .auto-card .answer.revealed { display: block; }
+      .auto-card .answer-label { all: initial; display: block; font: 9px system-ui, sans-serif;
+        text-transform: uppercase; letter-spacing: 0.06em; color: #94e2d5; margin-bottom: 2px; }
+      .auto-card .answer-value { all: initial; display: block; font: 700 13px system-ui, sans-serif; color: #cdd6f4; }
+      .auto-card .answer-only-line { all: initial; display: block; background: #313244; border-radius: 6px;
+        padding: 6px 8px; margin: 0 0 6px; font: 13px system-ui, sans-serif; color: #cdd6f4; }
+      .auto-card .answer-only-line .answer-label { all: initial; display: inline; font: 700 10px system-ui, sans-serif;
+        text-transform: uppercase; letter-spacing: 0.04em; color: #94e2d5; margin-right: 5px; }
       .auto-card button { all: initial; cursor: pointer; display: inline-block; background: #89b4fa;
         color: #1e1e2e; border-radius: 5px; padding: 4px 8px; font-size: 11px; font-weight: 600; }
       .auto-card .err { color: #f38ba8; }

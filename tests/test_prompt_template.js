@@ -17,7 +17,8 @@ assert.throws(() => buildPrompt("   "), /empty/);
 
 const explainPrompt = buildPrompt("2+2=? A) 3 B) 4 C) 5", MODES.EXPLAIN);
 assert.match(explainPrompt, /2\+2=\? A\) 3 B\) 4 C\) 5/);
-assert.match(explainPrompt, /final line write/);
+assert.match(explainPrompt, /own final line/);
+assert.match(explainPrompt, /one point per line/);
 
 const answerOnlyPrompt = buildPrompt("2+2=?", MODES.ANSWER_ONLY);
 assert.match(answerOnlyPrompt, /No explanation/);
@@ -36,7 +37,7 @@ assert.equal(withoutAnswer.explanation, "Just some rambling text, no marker.");
 // buildImagePrompt
 const imgPrompt = buildImagePrompt(MODES.EXPLAIN);
 assert.match(imgPrompt, /attached image/);
-assert.match(imgPrompt, /final line write/);
+assert.match(imgPrompt, /own final line/);
 const imgAnswerOnly = buildImagePrompt(MODES.ANSWER_ONLY);
 assert.match(imgAnswerOnly, /No explanation/);
 
