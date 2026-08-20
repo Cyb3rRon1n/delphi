@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font: 14px/1.5 system-ui, sans-serif; max-width: 480px; margin: 24px auto; padding: 0 16px; }
+      fieldset { margin-bottom: 16px; }
+      label { display: block; margin: 6px 0; }
+      input[type="text"], input[type="password"] { width: 100%; box-sizing: border-box; padding: 4px; }
+      #status { color: #16a34a; margin-left: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Delphi settings</h1>
+
+    <fieldset>
+      <legend>Answer mode</legend>
+      <label><input type="radio" name="mode" value="explain" /> Explain first, reveal answer on click (recommended for learning)</label>
+      <label><input type="radio" name="mode" value="answer_only" /> Answer only (quick self-check)</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>LLM provider</legend>
+      <label><input type="radio" name="providerId" value="chrome-ai" /> Chrome built-in AI (Gemini Nano, on-device, free, no setup)</label>
+      <label><input type="radio" name="providerId" value="ollama" /> Ollama (local)</label>
+      <div id="ollama-config" style="margin-left: 20px;">
+        <label>Base URL <input type="text" id="ollama-baseUrl" placeholder="http://localhost:11434" /></label>
+        <label>Model <input type="text" id="ollama-model" placeholder="llama3.2" /></label>
+      </div>
+      <label><input type="radio" name="providerId" value="custom" /> Custom API (OpenAI-compatible)</label>
+      <div id="custom-config" style="margin-left: 20px;">
+        <label>Base URL <input type="text" id="custom-baseUrl" placeholder="https://api.openai.com/v1" /></label>
+        <label>API key <input type="password" id="custom-apiKey" /></label>
+        <label>Model <input type="text" id="custom-model" placeholder="gpt-4o-mini" /></label>
+      </div>
+    </fieldset>
+
+    <button id="save">Save</button>
+    <span id="status"></span>
+
+    <script src="options.js"></script>
+  </body>
+</html>

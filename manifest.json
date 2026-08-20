@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Delphi — Study Explainer",
+  "version": "0.1.0",
+  "description": "Select a question on any page, get an explanation-first answer from a local LLM. Manual trigger only — no background scanning.",
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "src/options/options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "explain-selection": {
+      "suggested_key": { "default": "Ctrl+Shift+E", "mac": "Command+Shift+E" },
+      "description": "Explain the selected question"
+    }
+  }
+}
