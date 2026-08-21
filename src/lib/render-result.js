@@ -1,10 +1,3 @@
-// Shared DOM-building for a Delphi result — used by content.js's bottom
-// panel + inline auto-detect cards (dynamic import, classic script) and the
-// side panel (static import, real module page). Pure DOM, no extension API.
-
-// result: {explanation?, answer?, mode?, error?, question?} — same shape
-// whether it came from a DELPHI_RESULT broadcast, a direct
-// DELPHI_EXPLAIN_TEXT reply, or a stored history entry.
 export function buildResultBody(result) {
   const body = document.createElement("div");
   if (result.error) {
@@ -15,10 +8,6 @@ export function buildResultBody(result) {
     return body;
   }
   if (result.explanation) {
-    // One <p> per line instead of one dense block — the prompt now
-    // explicitly asks for one point per line, so there's real structure
-    // here to split on. Falls back to a single paragraph if the model
-    // ignored that and just wrote one dense line anyway.
     for (const line of result.explanation.split(/\n+/)) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -38,7 +27,8 @@ export function buildResultBody(result) {
       body.appendChild(p);
     } else {
       const reveal = document.createElement("button");
-      reveal.textContent = "Reveal answer";
+      reveal.textContent = "Thinking…";
+      reveal.className = "thinking-btn";
       const answerBox = document.createElement("div");
       answerBox.className = "answer";
       const label = document.createElement("div");
@@ -46,15 +36,39 @@ export function buildResultBody(result) {
       label.textContent = "Answer";
       const value = document.createElement("div");
       value.className = "answer-value";
-      value.textContent = result.answer;
       answerBox.append(label, value);
       reveal.addEventListener("click", () => {
-        answerBox.classList.add("revealed");
-        reveal.remove();
+        reveal.textContent = "…";
+        reveal.disabled = true;
+        const choice = extractChoice(result.answer);
+        value.textContent = choice;
+        reveal.textContent = choice;
+        reveal.disabled = false;
+        reveal.classList.add("revealed");
+        setTimeout(() => {
+          reveal.classList.remove("revealed");
+          reveal.textContent = "Reveal answer";
+          reveal.disabled = false;
+        }, 300);
       });
       body.appendChild(reveal);
       body.appendChild(answerBox);
     }
   }
   return body;
+}
+
+function extractChoice(answerText) {
+  const t = (answerText || "").trim();
+  if (!t) return "";
+  const lower = t.toLowerCase();
+  if (lower === "true") return "True";
+  if (lower === "false") return "False";
+  const letterMatch = t.match(/^([A-Da-d])\)?\s/);
+  if (letterMatch) return letterMatch[1].toUpperCase();
+  const numberMatch = t.match(/^([1-4])\)?\s/);
+  if (numberMatch) return numberMatch[1];
+  const parts = t.split(/\s+/);
+  if (parts.length > 0) return parts[0];
+  return t;
 }

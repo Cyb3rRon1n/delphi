@@ -1,6 +1,3 @@
-// Local Ollama server. Free, private, no key — requires the user to have
-// Ollama running (https://ollama.com) with a model pulled.
-
 export const id = "ollama";
 export const label = "Ollama (local)";
 
@@ -16,19 +13,10 @@ export async function isAvailable(config = {}) {
   }
 }
 
-// images, when present, is an array of "data:image/...;base64,..." strings —
-// Ollama's /api/generate wants raw base64 with no data: prefix. Text and
-// vision use separate model fields (config.model / config.visionModel) —
-// one general-purpose model is rarely both a strong text reasoner and
-// vision-capable, so forcing a single choice meant picking a compromise
-// for one path or the other.
 export async function generate(prompt, config = {}, images = null) {
   const baseUrl = config.baseUrl || DEFAULTS.baseUrl;
   const model = images?.length ? config.visionModel || DEFAULTS.visionModel : config.model || DEFAULTS.model;
 
-  // Lower-than-default temperature: this is a structured-format task (one
-  // point per line, a literal "Answer:" line), not creative writing — less
-  // sampling randomness means more consistent format adherence run to run.
   const body = { model, prompt, stream: false, options: { temperature: 0.3 } };
   if (images?.length) body.images = images.map((url) => url.replace(/^data:.*?;base64,/, ""));
 

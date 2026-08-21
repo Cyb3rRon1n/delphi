@@ -6,15 +6,14 @@ export const MODES = Object.freeze({
   ANSWER_ONLY: "answer_only", // just the answer — for a quick self-check pass
 });
 
-function instructionFor(mode) {
-  return mode === MODES.ANSWER_ONLY
-    ? "Reply with only the letter/choice of the most likely correct answer. No explanation."
-    : "Keep it short and scannable, one point per line, not one dense paragraph: one line on " +
-      "why the correct choice is right, then one short line per incorrect choice explaining " +
-      "briefly why it's wrong (this is often the part practice tests skip, and it's the part " +
-      "that actually helps someone learn — but each point still gets its own line). Then, on " +
-      "its own final line by itself, write 'Answer: <the answer>'.";
-}
+const INSTRUCTIONS = Object.freeze({
+  [MODES.ANSWER_ONLY]: "Reply with only the letter/choice of the most likely correct answer. No explanation.",
+  EXPLAIN: "Keep it short and scannable, one point per line, not one dense paragraph: one line on " +
+    "why the correct choice is right, then one short line per incorrect choice explaining " +
+    "briefly why it's wrong (this is often the part practice tests skip, and it's the part " +
+    "that actually helps someone learn — but each point still gets its own line). Then, on " +
+    "its own final line by itself, write 'Answer: <the answer>'.",
+});
 
 export function buildPrompt(questionText, mode = MODES.EXPLAIN) {
   if (!questionText || !questionText.trim()) {
@@ -26,7 +25,7 @@ export function buildPrompt(questionText, mode = MODES.EXPLAIN) {
     "(this is self-study, not a live exam). The learner selected the " +
     "following practice question from a page:";
 
-  return `${preamble}\n\n---\n${questionText.trim()}\n---\n\n${instructionFor(mode)}`;
+  return `${preamble}\n\n---\n${questionText.trim()}\n---\n\n${INSTRUCTIONS[mode]}`;
 }
 
 // Same idea, but for a captured image with no separately-extracted text —
@@ -35,9 +34,12 @@ export function buildImagePrompt(mode = MODES.EXPLAIN) {
   const preamble =
     "You are a study assistant helping a learner practice for themselves " +
     "(this is self-study, not a live exam). The attached image contains a " +
-    "practice question — read the question and any answer choices directly from it.";
+    "practice question — read the question and any answer choices directly from it. " +
+    "Use the same format as a text question: one line on why the correct choice is right, " +
+    "one short line per incorrect choice explaining briefly why it's wrong, then on its own " +
+    "final line write 'Answer: <the answer>'.";
 
-  return `${preamble}\n\n${instructionFor(mode)}`;
+  return `${preamble}\n\n${INSTRUCTIONS[mode]}`;
 }
 
 // Whole-tab screenshot that may contain several questions at once (e.g. a

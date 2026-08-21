@@ -19,7 +19,7 @@ export async function generate(prompt, config = {}, images = null) {
       "Chrome's built-in AI (LanguageModel) isn't available in this browser/version."
     );
   }
-  const createOptions = images?.length ? { expectedInputs: [{ type: "image" }] } : {};
+  const createOptions = images?.length ? { expectedInputs: [{ type: "image" }], temperature: 0.3 } : { temperature: 0.3 };
   // Lower-than-default temperature: this is a structured-format task (one
   // point per line, a literal "Answer:" line), not creative writing — less
   // sampling randomness means more consistent adherence to that format

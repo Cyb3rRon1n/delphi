@@ -12,10 +12,20 @@ export function looksLikeQuestion(text) {
   // covers both one-per-line lists and inline "A) x B) y" on a single line,
   // and numbered choices ("1. x 2. y") alongside lettered ones.
   const choiceLines = t.match(/(^|\s)(?:[A-Da-d]|[1-9])[.):]\s+\S/g) || [];
-  if (choiceLines.length >= 2) return true;
+  if (choiceLines.length >= 2) {
+    // If there are 3+ choice lines and the question mark appears after the
+    // choice patterns (or there's no clear leading question mark), it's likely
+    // an answer key, not a practice question.
+    if (choiceLines.length >= 3) {
+      const firstSentence = t.split(/[.!?]/)[0].trim();
+      if (!/\?/.test(firstSentence)) return false;
+    }
+    return true;
+  }
   // True/false questions have no lettered/numbered choices at all — just
   // both words present is a reasonable-enough signal alongside the '?'.
-  return /\btrue\b/i.test(t) && /\bfalse\b/i.test(t);
+  if (/true/i.test(t) && /false/i.test(t)) return true;
+  return /\btrue\b/i.test(t) || /\bfalse\b/i.test(t);
 }
 
 const CANDIDATE_SELECTOR = "p, div, li, td, fieldset, section";
