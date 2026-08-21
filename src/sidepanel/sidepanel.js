@@ -53,7 +53,24 @@ async function refreshAutoToggle() {
   toggle.checked = Boolean(enabled);
 }
 
-let currentEntries = [];
+let highlightedElement = null;
+
+function removeHighlight() {
+  if (highlightedElement) {
+    highlightedElement.classList.remove("highlighted");
+    highlightedElement = null;
+  }
+}
+
+function highlightElement(el) {
+  removeHighlight();
+  if (el) {
+    el.classList.add("highlighted");
+    highlightedElement = el;
+    // Scroll into view
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
 
 async function refreshHistory() {
   if (currentTabId == null) return;
@@ -70,6 +87,7 @@ async function refreshHistory() {
 function renderHistory(entries) {
   historyEl.innerHTML = "";
   emptyEl.style.display = entries.length ? "none" : "block";
+  let lastHighlighted = null;
   [...entries].reverse().forEach((entry, i) => {
     const details = document.createElement("details");
     details.className = "entry";
@@ -84,13 +102,41 @@ function renderHistory(entries) {
     del.textContent = "✕";
     del.title = "Delete this entry";
     del.addEventListener("click", (e) => {
-      e.preventDefault(); // don't toggle the <details> open/closed
+      e.preventDefault();
       e.stopPropagation();
       if (currentTabId == null || !entry.id) return;
       api.runtime.sendMessage({ type: "DELPHI_DELETE_HISTORY_ENTRY", tabId: currentTabId, entryId: entry.id });
     });
     summary.appendChild(qText);
     summary.appendChild(del);
+
+    // Add click handler to highlight the question on the page
+    details.addEventListener("click", (e) => {
+      if (e.target === details || e.target === summary || e.target === qText || e.target === del) {
+        // Remove any previous highlight
+        if (lastHighlighted) {
+          lastHighlighted.classList.remove("highlighted");
+        }
+        // Search page for element containing this question text
+        const text = entry.question;
+        const candidates = document.body.querySelectorAll("*");
+        let found = null;
+        for (const el of candidates) {
+          if (el.childNodes.length === 0) continue;
+          const elText = el.innerText || el.textContent || "";
+          if (elText.includes(text) && el !== highlightedElement) {
+            found = el;
+            break;
+          }
+        }
+        if (found) {
+          lastHighlighted = found;
+          highlightElement(found);
+        } else {
+          removeHighlight();
+        }
+      }
+    });
 
     details.appendChild(summary);
     details.appendChild(buildResultBody(entry));
