@@ -68,10 +68,11 @@ Configurable in the extension's Options page:
 
 ```
 git clone https://github.com/Cyb3rRon1n/delphi.git
-cd delphi && ./install.sh
+cd delphi && ./install.sh          # Linux/macOS
+cd delphi; .\install.ps1           # Windows (PowerShell)
 ```
 
-Launches Chrome/Chromium/Brave with Delphi loaded, in a throwaway profile — no manual "Load unpacked" clicking. Full first-run walkthrough (verifying the LLM backend, testing all four input paths against the included test page): **[docs/walkthrough.md](docs/walkthrough.md)**.
+Launches Chrome/Chromium/Brave with Delphi loaded, in a throwaway profile — no manual "Load unpacked" clicking. `install.ps1` checks PATH first, then the usual Chrome/Brave install locations under `Program Files`/`LocalAppData`, since those browsers aren't normally on `PATH` on Windows. Full first-run walkthrough (verifying the LLM backend, testing all four input paths against the included test page): **[docs/walkthrough.md](docs/walkthrough.md)**.
 
 **Manual load, or Firefox**: `chrome://extensions` (Brave: `brave://extensions`) → enable Developer mode → "Load unpacked" → select this directory. For Firefox, `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → select `manifest.json`. **Firefox is untested** — two manifest keys tried for compat (`background.scripts`, `sidebar_action`) both broke Chrome loading and were reverted, so whether the background script even starts there is unconfirmed; try it and report what happens. Chrome's built-in AI works with zero setup if available; **Brave doesn't ship it** (no Gemini Nano component) and Firefox has no equivalent either, so use Ollama or Custom API on both.
 
