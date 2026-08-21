@@ -13,7 +13,7 @@ export async function generate(prompt, config = {}, images = null) {
       "Chrome's built-in AI (LanguageModel) isn't available in this browser/version."
     );
   }
-  const createOptions = images?.length ? { expectedInputs: [{ type: "image" }] } : {};
+  const createOptions = images?.length ? { expectedInputs: [{ type: "image" }], temperature: 0.3, topK: 3 } : { temperature: 0.3, topK: 3 };
 
   try {
     const session = await LanguageModel.create(createOptions);
