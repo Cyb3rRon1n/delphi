@@ -8,7 +8,7 @@ export const MODES = Object.freeze({
 
 const INSTRUCTIONS = Object.freeze({
   [MODES.ANSWER_ONLY]: "Reply with only the letter/choice of the most likely correct answer. No explanation.",
-  EXPLAIN: "Keep it short and scannable, one point per line, not one dense paragraph: one line on " +
+  [MODES.EXPLAIN]: "Keep it short and scannable, one point per line, not one dense paragraph: one line on " +
     "why the correct choice is right, then one short line per incorrect choice explaining " +
     "briefly why it's wrong (this is often the part practice tests skip, and it's the part " +
     "that actually helps someone learn — but each point still gets its own line). Then, on " +

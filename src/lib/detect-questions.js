@@ -17,8 +17,13 @@ export function looksLikeQuestion(text) {
     // choice patterns (or there's no clear leading question mark), it's likely
     // an answer key, not a practice question.
     if (choiceLines.length >= 3) {
-      const firstSentence = t.split(/[.!?]/)[0].trim();
-      if (!/\?/.test(firstSentence)) return false;
+      // Answer keys list choices with no question before them — the '?'
+      // (if any) sits after the choices. Compare positions, don't split on
+      // punctuation: a split on [.!?] can never leave a '?' in fragment[0],
+      // which made every normal 3+-choice question look like an answer key.
+      const qIdx = t.indexOf('?');
+      const firstChoiceIdx = t.search(/(^|\s)(?:[A-Da-d]|[1-9])[.):]\s+\S/);
+      if (qIdx === -1 || qIdx > firstChoiceIdx) return false;
     }
     return true;
   }
