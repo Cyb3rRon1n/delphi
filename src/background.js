@@ -4,6 +4,7 @@ import {
   buildPageCheckPrompt,
   parsePageCheckReply,
   parseReply,
+  finalizeReply,
 } from "./lib/prompt-template.js";
 import { generate, getSettings } from "./providers/index.js";
 
@@ -98,7 +99,7 @@ async function withKeepAlive(run) {
 async function runGenerate(mode, run) {
   try {
     const reply = await withKeepAlive(run);
-    return { mode, ...parseReply(reply) };
+    return { mode, ...finalizeReply(parseReply(reply), mode) };
   } catch (err) {
     return { error: err.message };
   }
@@ -150,27 +151,34 @@ function snippet(text, max = 140) {
 
 // Selection and region-capture have no natural on-page anchor, so their
 // result still goes to the shared bottom-right panel via broadcast.
+async function report(tabId, question, result) {
+  await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result }).catch(() => {});
+  await pushHistory(tabId, { question, ...result });
+}
+
 async function runForText(tabId, text) {
-  await ensureContentScript(tabId);
-  await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
   await setBusy(tabId, true);
   try {
+    await ensureContentScript(tabId);
+    await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
     const result = await explainText(text);
-    await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
-    await pushHistory(tabId, { question: snippet(text), ...result });
+    await report(tabId, snippet(text), result);
+  } catch (err) {
+    await report(tabId, snippet(text), { error: err.message });
   } finally {
     await setBusy(tabId, false);
   }
 }
 
 async function runForImage(tabId, imageDataUrl) {
-  await ensureContentScript(tabId);
-  await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
   await setBusy(tabId, true);
   try {
+    await ensureContentScript(tabId);
+    await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
     const result = await explainImage(imageDataUrl);
-    await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
-    await pushHistory(tabId, { question: "[captured image]", ...result });
+    await report(tabId, "[captured image]", result);
+  } catch (err) {
+    await report(tabId, "[captured image]", { error: err.message });
   } finally {
     await setBusy(tabId, false);
   }
@@ -239,11 +247,11 @@ async function captureFullPage(tabId, windowId) {
 }
 
 async function checkPage(tabId) {
-  await ensureContentScript(tabId);
-  await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
   await setBusy(tabId, true);
-  const settings = await getSettings();
   try {
+    await ensureContentScript(tabId);
+    await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
+    const settings = await getSettings();
     const { windowId } = await api.tabs.get(tabId);
     const shots = await captureFullPage(tabId, windowId);
 
@@ -274,14 +282,10 @@ async function checkPage(tabId) {
     } else {
       // Model didn't follow the ### format — fall back to showing the raw
       // reply as one blob rather than losing the content entirely.
-      const result = { mode: settings.mode, explanation: reply, answer: null };
-      await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
-      await pushHistory(tabId, { question: "[page check]", ...result });
+      await report(tabId, "[page check]", { mode: settings.mode, explanation: reply, answer: null });
     }
   } catch (err) {
-    const result = { error: err.message };
-    await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result });
-    await pushHistory(tabId, { question: "[page check]", ...result });
+    await report(tabId, "[page check]", { error: err.message });
   } finally {
     await setBusy(tabId, false);
   }
@@ -331,7 +335,11 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const shot = await api.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" });
       const cropped = await cropDataUrl(shot, msg.rect, msg.dpr);
       await runForImage(tabId, cropped);
-    })();
+    })().catch(async (err) => {
+      // Capture/crop failures (tab switched mid-drag, capture quota) would
+      // otherwise vanish as unhandled rejections — surface them like any other.
+      await report(tabId, "[captured image]", { error: err.message });
+    });
     return;
   }
 

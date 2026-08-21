@@ -85,13 +85,20 @@ async function refreshHistory() {
 // history. The most recent entry stays open, since that's usually the one
 // you actually want to read right after asking for it.
 function renderHistory(entries) {
+  // Every storage change re-renders the whole list; remember which entries
+  // the user expanded so a mid-batch update doesn't collapse what they're
+  // reading. Newest entry still opens by default.
+  const openIds = new Set(
+    [...historyEl.querySelectorAll("details.entry[open]")].map((d) => d.dataset.id)
+  );
   historyEl.innerHTML = "";
   emptyEl.style.display = entries.length ? "none" : "block";
   let lastHighlighted = null;
   [...entries].reverse().forEach((entry, i) => {
     const details = document.createElement("details");
     details.className = "entry";
-    details.open = i === 0;
+    details.dataset.id = entry.id;
+    details.open = i === 0 || openIds.has(entry.id);
 
     const summary = document.createElement("summary");
     const qText = document.createElement("span");

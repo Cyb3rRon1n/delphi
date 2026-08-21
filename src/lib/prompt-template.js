@@ -94,19 +94,36 @@ export function parseReply(rawText) {
   return { explanation, answer };
 }
 
+// In answer_only mode the prompt asks for a bare choice ("B") — a compliant
+// reply parses as { explanation: "B", answer: null }, which would render as
+// plain text instead of the styled answer. Move it where the UI expects it.
+export function finalizeReply(parsed, mode) {
+  if (mode === MODES.ANSWER_ONLY && !parsed.answer && parsed.explanation) {
+    return { explanation: null, answer: parsed.explanation };
+  }
+  return parsed;
+}
+
 // Splits a "Check this page" reply into one {question, explanation, answer}
 // per question, using the ### delimiter buildPageCheckPrompt asks for.
-// Returns null (not an empty array) if the model didn't follow the format
-// (fewer than 2 blocks) — the caller falls back to showing the raw reply
-// as one blob rather than presenting a single "question" with no label.
+// Returns null (not an empty array) if the model didn't follow the format —
+// the caller falls back to showing the raw reply as one blob rather than
+// losing content. A single block still counts when it carries an "Answer:"
+// line (a one-question page is a success, not a format failure); prose
+// without one ("no questions found") stays null so it's shown verbatim.
 export function parsePageCheckReply(rawText) {
+  const toEntry = (block) => {
+    const [label, ...rest] = block.split("\n");
+    return { question: label.trim(), ...parseReply(rest.join("\n")) };
+  };
   const blocks = (rawText || "")
     .split(/\n*###\n*/)
     .map((b) => b.trim())
     .filter(Boolean);
-  if (blocks.length < 2) return null;
-  return blocks.map((block) => {
-    const [label, ...rest] = block.split("\n");
-    return { question: label.trim(), ...parseReply(rest.join("\n")) };
-  });
+  if (blocks.length === 1) {
+    const entry = toEntry(blocks[0]);
+    return entry.answer ? [entry] : null;
+  }
+  if (blocks.length < 1) return null;
+  return blocks.map(toEntry);
 }

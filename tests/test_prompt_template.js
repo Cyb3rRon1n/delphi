@@ -7,6 +7,7 @@ import {
   buildPageCheckPrompt,
   parsePageCheckReply,
   parseReply,
+  finalizeReply,
   MODES,
 } from "../src/lib/prompt-template.js";
 import { looksLikeQuestion } from "../src/lib/detect-questions.js";
@@ -71,6 +72,36 @@ assert.equal(multi[1].answer, "4");
 
 assert.equal(parsePageCheckReply("No delimiter here at all, just plain prose."), null);
 assert.equal(parsePageCheckReply(""), null);
+
+// A single ###-less block still parses when it carries an Answer: line
+// (one-question page = success, not a format failure)…
+const single = parsePageCheckReply(
+  "Q1: capital of France\nParis is the capital because...\nAnswer: Paris"
+);
+assert.equal(single.length, 1);
+assert.equal(single[0].question, "Q1: capital of France");
+assert.equal(single[0].answer, "Paris");
+// …but prose without one ("no questions found") stays a format failure.
+assert.equal(parsePageCheckReply("There are no questions on this page."), null);
+
+// answer_only mode: a bare compliant reply ("B") is the answer, not explanation
+assert.deepEqual(finalizeReply({ explanation: "B", answer: null }, MODES.ANSWER_ONLY), {
+  explanation: null,
+  answer: "B",
+});
+// empty reply stays untouched; already-parsed answers pass through; explain mode unaffected
+assert.deepEqual(finalizeReply({ explanation: "", answer: null }, MODES.ANSWER_ONLY), {
+  explanation: "",
+  answer: null,
+});
+assert.deepEqual(finalizeReply({ explanation: "why...", answer: "B" }, MODES.ANSWER_ONLY), {
+  explanation: "why...",
+  answer: "B",
+});
+assert.deepEqual(finalizeReply({ explanation: "why...", answer: null }, MODES.EXPLAIN), {
+  explanation: "why...",
+  answer: null,
+});
 
 // looksLikeQuestion
 assert.equal(
