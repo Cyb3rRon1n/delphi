@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  📖 <a href="docs/walkthrough.md">Walkthrough</a> · <a href="CLAUDE.md">Architecture &amp; Verification Log</a> · <a href="https://cyb3rron1n.github.io/">Sibling Projects</a> · <a href="docs/images/favicon.svg">Favicon</a>
+  📖 <a href="docs/walkthrough.md">Walkthrough</a> · <a href="ROADMAP.md">Roadmap</a> · <a href="CLAUDE.md">Architecture &amp; Verification Log</a> · <a href="https://cyb3rron1n.github.io/">Sibling Projects</a> · <a href="docs/images/favicon.svg">Favicon</a>
 </p>
 
 A browser extension (Chrome, Brave, Firefox) for self-study: get an explanation of the reasoning behind a practice question — including why the *other* choices are wrong, which is the part most practice tests and mock exams skip — with the answer revealed on click.
