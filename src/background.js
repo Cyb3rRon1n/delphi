@@ -264,14 +264,27 @@ async function checkPage(tabId) {
 
     let reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
     let parsed = parsePageCheckReply(reply);
-    if (!parsed) {
-      // One automatic retry on a total format failure (not just a few
-      // missing answers within an otherwise-parsed reply) — same
-      // screenshots, a fresh generation attempt, before falling back to
-      // the raw-text blob. This is what used to require manually clicking
-      // "Check this page" again.
-      reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
-      parsed = parsePageCheckReply(reply);
+    // One automatic retry on a total format failure, or on a suspiciously
+    // thin result — confirmed live on a real 9-question page with Ollama:
+    // the model answered only Question 1, but formatted that one block
+    // perfectly, so parsePageCheckReply's "a single well-formed block is a
+    // successful one-question page" rule (see its own comment) accepted it.
+    // There's no way to tell "the page really only had one question" apart
+    // from "the model gave up after the first" from the parse alone — but
+    // shots.length > 1 means captureFullPage had to scroll to cover the
+    // page, which is a decent signal that more than one question is likely
+    // still there to find. This is what used to require manually clicking
+    // "Check this page" again.
+    const needsRetry = !parsed || (parsed.length === 1 && shots.length > 1);
+    if (needsRetry) {
+      const retryReply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
+      const retryParsed = parsePageCheckReply(retryReply);
+      // Only take the retry if it did at least as well — don't discard a
+      // genuine partial success for a retry that did worse or failed outright.
+      if (retryParsed && (!parsed || retryParsed.length >= parsed.length)) {
+        reply = retryReply;
+        parsed = retryParsed;
+      }
     }
 
     if (parsed) {

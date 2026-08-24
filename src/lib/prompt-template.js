@@ -108,7 +108,10 @@ export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
     "not separate unrelated images) that may contain one or more practice " +
     "questions (e.g. a multi-question knowledge check). Find every question " +
     "visible across all of the images, without duplicating a question that " +
-    "happens to appear in more than one image due to overlap at the edges.";
+    "happens to appear in more than one image due to overlap at the edges. " +
+    "There may be many questions — work through them one at a time and keep " +
+    "going block by block until every question you can see has been covered; " +
+    "do not stop after just the first one.";
 
   // Strict, parseable format instead of "number each question clearly" prose
   // — a small local model's numbering/formatting is inconsistent enough that
