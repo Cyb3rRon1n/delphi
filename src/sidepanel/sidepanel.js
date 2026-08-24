@@ -14,6 +14,7 @@ const copyHistoryBtn = document.getElementById("copy-history");
 const clearHistoryBtn = document.getElementById("clear-history");
 
 let currentTabId = null;
+let currentEntries = [];
 
 async function refreshTab() {
   const [tab] = await api.tabs.query({ active: true, currentWindow: true });
