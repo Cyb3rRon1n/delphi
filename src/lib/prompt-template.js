@@ -22,11 +22,21 @@ const INSTRUCTIONS = Object.freeze({
 // reason a person reads all the options before picking one. The two labeled
 // lines this produces are what parseIdentifiedReply()/parsePageCheckReply()
 // pull off the front of a reply so the UI can show them as their own fields.
+//
+// Two things this specifically guards against, found live on a real reply:
+// (1) the model transcribing the question+choices as plain text first (very
+// tempting when reading straight off a screenshot) and *then* also writing
+// the labeled lines, so everything shows up twice in the panel — the
+// "don't repeat" clause exists only because that happened; (2) the choices
+// coming back as one run-on sentence with no separators between options,
+// unreadable once rendered — the "|"-separated shape gives the renderer
+// something to split on for a real per-choice list instead of a wall of text.
 const IDENTIFY_LINES =
-  "start with exactly these two labeled lines, each on its own line: " +
-  "'Question: <the question text>' then 'Choices: <every multiple-choice " +
-  "option, or True/False, or, for fill-in-the-blank, a note that it's " +
-  "fill-in-the-blank and what fills it>'. Use those to determine the best answer, then continue";
+  "start with exactly these two labeled lines, each on its own line, and do not repeat the " +
+  "question text or the choices anywhere else in your reply: 'Question: <the question text>' " +
+  "then 'Choices: <each option separated by \" | \", e.g. \"A) foo | B) bar | C) baz\" — or " +
+  "True/False, or, for fill-in-the-blank, a note that it's fill-in-the-blank and what fills it>'. " +
+  "Use those to determine the best answer, then continue";
 
 export function buildPrompt(questionText, mode = MODES.EXPLAIN) {
   if (!questionText || !questionText.trim()) {
@@ -106,9 +116,11 @@ export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
   // much lower bar for a model to actually follow consistently.
   const format =
     "Format your reply as one block per question, in this exact shape, with no extra text " +
-    "before the first block or after the last: a one-line question label, then a newline, then " +
-    "'Choices: <every multiple-choice option, or True/False, or, for fill-in-the-blank, a note " +
-    "that it's fill-in-the-blank and what fills it>', then a newline, then " +
+    "before the first block or after the last, and without repeating the question or its " +
+    "choices anywhere outside these two lines: a one-line question label, then a newline, then " +
+    "'Choices: <each option separated by \" | \", e.g. \"A) foo | B) bar | C) baz\" — or " +
+    "True/False, or, for fill-in-the-blank, a note that it's fill-in-the-blank and what fills " +
+    "it>', then a newline, then " +
     (mode === MODES.ANSWER_ONLY
       ? "'Answer: <the answer>'"
       : "one short line on why the correct choice is right, one short line per incorrect choice " +

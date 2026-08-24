@@ -11,7 +11,7 @@ export function buildResultBody(result) {
   // title already carries it (see background.js's report()); repeating it
   // in the body would just duplicate what's already the visible label.
   if (result.choices) {
-    body.appendChild(field("Choices", result.choices));
+    body.appendChild(field("Choices", formatChoices(result.choices)));
   }
   if (result.explanation) {
     for (const line of result.explanation.split(/\n+/)) {
@@ -62,6 +62,15 @@ export function buildResultBody(result) {
     }
   }
   return body;
+}
+
+// The prompt asks for "|"-separated choices (see IDENTIFY_LINES) so they can
+// be rendered as one option per line instead of a run-on sentence; falls
+// back to the raw string unchanged for True/False, fill-in-the-blank, or an
+// older/non-compliant reply with no "|" in it.
+function formatChoices(raw) {
+  const items = raw.split("|").map((s) => s.trim()).filter(Boolean);
+  return items.length > 1 ? items.map((i) => `• ${i}`).join("\n") : raw;
 }
 
 function field(label, value) {

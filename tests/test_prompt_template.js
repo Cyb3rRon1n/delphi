@@ -22,7 +22,7 @@ assert.match(explainPrompt, /2\+2=\? A\) 3 B\) 4 C\) 5/);
 assert.match(explainPrompt, /own final line/);
 assert.match(explainPrompt, /one point per line/);
 assert.match(explainPrompt, /'Question: <the question text>'/);
-assert.match(explainPrompt, /'Choices: <every multiple-choice/);
+assert.match(explainPrompt, /'Choices: <each option separated by/);
 
 const answerOnlyPrompt = buildPrompt("2+2=?", MODES.ANSWER_ONLY);
 assert.match(answerOnlyPrompt, /No explanation/);
@@ -57,10 +57,10 @@ assert.match(imgAnswerOnly, /No explanation/);
 
 // parseIdentifiedReply
 const withIdLines = parseIdentifiedReply(
-  "Question: What is 2+2?\nChoices: A) 3 B) 4 C) 5\nB is correct because 2+2=4.\nAnswer: B",
+  "Question: What is 2+2?\nChoices: A) 3 | B) 4 | C) 5\nB is correct because 2+2=4.\nAnswer: B",
 );
 assert.equal(withIdLines.question, "What is 2+2?");
-assert.equal(withIdLines.choices, "A) 3 B) 4 C) 5");
+assert.equal(withIdLines.choices, "A) 3 | B) 4 | C) 5");
 assert.equal(withIdLines.explanation, "B is correct because 2+2=4.");
 assert.equal(withIdLines.answer, "B");
 
@@ -73,18 +73,18 @@ assert.equal(noIdLines.answer, "B");
 const pageCheckPrompt = buildPageCheckPrompt(MODES.EXPLAIN);
 assert.match(pageCheckPrompt, /every question visible/);
 assert.match(pageCheckPrompt, /containing only ###/);
-assert.match(pageCheckPrompt, /'Choices: <every multiple-choice/);
+assert.match(pageCheckPrompt, /'Choices: <each option separated by/);
 const pageCheckAnswerOnly = buildPageCheckPrompt(MODES.ANSWER_ONLY);
 assert.match(pageCheckAnswerOnly, /'Answer: <the answer>'/);
 
 // parsePageCheckReply
 const multi = parsePageCheckReply(
-  "Q1: capital of France\nChoices: A) Paris B) Lyon C) Nice\nParis is the capital because...\nAnswer: Paris\n###\n" +
-    "Q2: 2+2\nChoices: True/False (it's a fill-in, not really — arithmetic)\nBasic addition.\nAnswer: 4"
+  "Q1: capital of France\nChoices: A) Paris | B) Lyon | C) Nice\nParis is the capital because...\nAnswer: Paris\n###\n" +
+    "Q2: 2+2\nChoices: A) 3 | B) 4 | C) 5\nBasic addition.\nAnswer: 4"
 );
 assert.equal(multi.length, 2);
 assert.equal(multi[0].question, "Q1: capital of France");
-assert.equal(multi[0].choices, "A) Paris B) Lyon C) Nice");
+assert.equal(multi[0].choices, "A) Paris | B) Lyon | C) Nice");
 assert.equal(multi[0].answer, "Paris");
 assert.match(multi[0].explanation, /Paris is the capital/);
 assert.equal(multi[1].answer, "4");
@@ -101,11 +101,11 @@ assert.equal(parsePageCheckReply(""), null);
 // A single ###-less block still parses when it carries an Answer: line
 // (one-question page = success, not a format failure)…
 const single = parsePageCheckReply(
-  "Q1: capital of France\nChoices: A) Paris B) Lyon\nParis is the capital because...\nAnswer: Paris"
+  "Q1: capital of France\nChoices: A) Paris | B) Lyon\nParis is the capital because...\nAnswer: Paris"
 );
 assert.equal(single.length, 1);
 assert.equal(single[0].question, "Q1: capital of France");
-assert.equal(single[0].choices, "A) Paris B) Lyon");
+assert.equal(single[0].choices, "A) Paris | B) Lyon");
 assert.equal(single[0].answer, "Paris");
 // …but prose without one ("no questions found") stays a format failure.
 assert.equal(parsePageCheckReply("There are no questions on this page."), null);
