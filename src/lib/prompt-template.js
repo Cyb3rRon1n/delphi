@@ -99,7 +99,15 @@ export function parseIdentifiedReply(rawText) {
 // multi-question knowledge check) — asks for a numbered list rather than
 // one answer, so the reply is rendered as-is (no parseReply split; there's
 // no single trailing "Answer:" line to find).
-export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
+// alreadyCovered: question labels from a previous round on the same page
+// (see checkPage()'s continuation loop in background.js) — told to the
+// model explicitly so it skips them and moves on, rather than relying on a
+// bare retry to magically produce different output. A same-prompt retry at
+// this app's low temperature (see INSTRUCTIONS above) mostly reproduces the
+// same reply, truncation point included — confirmed live: a model that
+// stopped after Question 1 on a 9-question page stopped after Question 1
+// again on an identical retry.
+export function buildPageCheckPrompt(mode = MODES.EXPLAIN, alreadyCovered = []) {
   const preamble =
     "You are a study assistant helping a learner practice for themselves " +
     "(this is self-study, not a live exam). The attached images are screenshots " +
@@ -132,7 +140,12 @@ export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
     ". Separate each question's block from the next with a line containing only ###. " +
     "If there are no questions across the images, just say so plainly with no ### blocks.";
 
-  return `${preamble}\n\n${format}`;
+  const continuation = alreadyCovered.length
+    ? "\n\nYou already answered these questions in a previous pass — do not repeat them, only " +
+      `continue with whatever questions remain uncovered: ${alreadyCovered.join("; ")}.`
+    : "";
+
+  return `${preamble}\n\n${format}${continuation}`;
 }
 
 // Splits a provider's raw reply into { explanation, answer } for display.

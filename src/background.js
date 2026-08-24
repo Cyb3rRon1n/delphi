@@ -262,47 +262,53 @@ async function checkPage(tabId) {
     const { windowId } = await api.tabs.get(tabId);
     const shots = await captureFullPage(tabId, windowId);
 
-    let reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
-    let parsed = parsePageCheckReply(reply);
-    // One automatic retry on a total format failure, or on a suspiciously
-    // thin result — confirmed live on a real 9-question page with Ollama:
-    // the model answered only Question 1, but formatted that one block
-    // perfectly, so parsePageCheckReply's "a single well-formed block is a
-    // successful one-question page" rule (see its own comment) accepted it.
-    // There's no way to tell "the page really only had one question" apart
-    // from "the model gave up after the first" from the parse alone — but
-    // shots.length > 1 means captureFullPage had to scroll to cover the
-    // page, which is a decent signal that more than one question is likely
-    // still there to find. This is what used to require manually clicking
-    // "Check this page" again.
-    const needsRetry = !parsed || (parsed.length === 1 && shots.length > 1);
-    if (needsRetry) {
-      const retryReply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode), shots));
-      const retryParsed = parsePageCheckReply(retryReply);
-      // Only take the retry if it did at least as well — don't discard a
-      // genuine partial success for a retry that did worse or failed outright.
-      if (retryParsed && (!parsed || retryParsed.length >= parsed.length)) {
-        reply = retryReply;
-        parsed = retryParsed;
+    // A plain retry on total format failure used to be enough, but confirmed
+    // live on a real 9-question page (Ollama): the model answered only
+    // Question 1, formatted perfectly, then stopped — and an identical
+    // retry reproduced the exact same truncation, since temperature is
+    // already low for format compliance (see prompt-template.js), so a
+    // same-prompt retry mostly regenerates the same reply. Loop instead:
+    // each round tells the model (via buildPageCheckPrompt's alreadyCovered)
+    // which questions it already answered and asks it to continue, so each
+    // attempt is a genuinely different prompt, not a re-roll of the same
+    // one. Stops as soon as a round adds nothing new, or after MAX_ROUNDS —
+    // a hard cap so a model stuck in a "found nothing, formatted nothing"
+    // loop can't run forever (up to MAX_ROUNDS attempts total on a total
+    // format failure, not just one retry, since each is cheap to bound and
+    // there's no partial content being wasted by trying again).
+    const MAX_ROUNDS = 4;
+    let allParsed = [];
+    let lastReply = "";
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const covered = allParsed.map((p) => p.question);
+      const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode, covered), shots));
+      lastReply = reply;
+      const parsed = parsePageCheckReply(reply);
+      if (!parsed) {
+        if (allParsed.length) break; // already have partial results — don't keep hammering on a failed round
+        continue; // total failure with nothing yet — worth one more try
       }
+      const newOnes = parsed.filter((p) => !covered.includes(p.question));
+      if (newOnes.length === 0) break; // nothing new this round — model thinks it's done, or stuck
+      allParsed.push(...newOnes);
     }
 
-    if (parsed) {
+    if (allParsed.length) {
       // One history entry per question — same rendering the side panel
       // already uses for everything else, browsable/collapsible per question
       // instead of one long blob. The corner panel just gets a pointer to
       // the side panel, since it can't show N separate entries itself.
-      await pushHistoryMany(tabId, parsed.map((p) => ({ mode: settings.mode, ...p })));
+      await pushHistoryMany(tabId, allParsed.map((p) => ({ mode: settings.mode, ...p })));
       await api.tabs.sendMessage(tabId, {
         type: "DELPHI_RESULT",
         mode: settings.mode,
-        explanation: `Found ${parsed.length} question${parsed.length === 1 ? "" : "s"} — see the side panel for each one.`,
+        explanation: `Found ${allParsed.length} question${allParsed.length === 1 ? "" : "s"} — see the side panel for each one.`,
         answer: null,
       });
     } else {
-      // Model didn't follow the ### format — fall back to showing the raw
-      // reply as one blob rather than losing the content entirely.
-      await report(tabId, "[page check]", { mode: settings.mode, explanation: reply, answer: null });
+      // Model never followed the ### format across every round — fall back
+      // to showing the last raw reply as one blob rather than losing it.
+      await report(tabId, "[page check]", { mode: settings.mode, explanation: lastReply, answer: null });
     }
   } catch (err) {
     await report(tabId, "[page check]", { error: err.message });

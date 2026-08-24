@@ -77,6 +77,12 @@ assert.match(pageCheckPrompt, /'Choices: <each option separated by/);
 const pageCheckAnswerOnly = buildPageCheckPrompt(MODES.ANSWER_ONLY);
 assert.match(pageCheckAnswerOnly, /'Answer: <the answer>'/);
 
+// buildPageCheckPrompt's continuation round (see checkPage()'s loop)
+assert.equal(pageCheckPrompt.includes("already answered"), false); // no continuation text with nothing covered yet
+const continued = buildPageCheckPrompt(MODES.EXPLAIN, ["Q1: capital of France", "Q2: 2+2"]);
+assert.match(continued, /already answered these questions in a previous pass/);
+assert.match(continued, /Q1: capital of France; Q2: 2\+2/);
+
 // parsePageCheckReply
 const multi = parsePageCheckReply(
   "Q1: capital of France\nChoices: A) Paris | B) Lyon | C) Nice\nParis is the capital because...\nAnswer: Paris\n###\n" +
