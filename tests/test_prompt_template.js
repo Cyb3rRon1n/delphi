@@ -7,6 +7,7 @@ import {
   buildPageCheckPrompt,
   parsePageCheckReply,
   parseReply,
+  parseIdentifiedReply,
   finalizeReply,
   MODES,
 } from "../src/lib/prompt-template.js";
@@ -20,6 +21,8 @@ const explainPrompt = buildPrompt("2+2=? A) 3 B) 4 C) 5", MODES.EXPLAIN);
 assert.match(explainPrompt, /2\+2=\? A\) 3 B\) 4 C\) 5/);
 assert.match(explainPrompt, /own final line/);
 assert.match(explainPrompt, /one point per line/);
+assert.match(explainPrompt, /'Question: <the question text>'/);
+assert.match(explainPrompt, /'Choices: <every multiple-choice/);
 
 const answerOnlyPrompt = buildPrompt("2+2=?", MODES.ANSWER_ONLY);
 assert.match(answerOnlyPrompt, /No explanation/);
@@ -52,23 +55,45 @@ assert.match(imgPrompt, /own final line/);
 const imgAnswerOnly = buildImagePrompt(MODES.ANSWER_ONLY);
 assert.match(imgAnswerOnly, /No explanation/);
 
+// parseIdentifiedReply
+const withIdLines = parseIdentifiedReply(
+  "Question: What is 2+2?\nChoices: A) 3 B) 4 C) 5\nB is correct because 2+2=4.\nAnswer: B",
+);
+assert.equal(withIdLines.question, "What is 2+2?");
+assert.equal(withIdLines.choices, "A) 3 B) 4 C) 5");
+assert.equal(withIdLines.explanation, "B is correct because 2+2=4.");
+assert.equal(withIdLines.answer, "B");
+
+const noIdLines = parseIdentifiedReply("B is correct because 2+2=4.\nAnswer: B");
+assert.equal(noIdLines.question, null);
+assert.equal(noIdLines.choices, null);
+assert.equal(noIdLines.answer, "B");
+
 // buildPageCheckPrompt
 const pageCheckPrompt = buildPageCheckPrompt(MODES.EXPLAIN);
 assert.match(pageCheckPrompt, /every question visible/);
 assert.match(pageCheckPrompt, /containing only ###/);
+assert.match(pageCheckPrompt, /'Choices: <every multiple-choice/);
 const pageCheckAnswerOnly = buildPageCheckPrompt(MODES.ANSWER_ONLY);
 assert.match(pageCheckAnswerOnly, /'Answer: <the answer>'/);
 
 // parsePageCheckReply
 const multi = parsePageCheckReply(
-  "Q1: capital of France\nParis is the capital because...\nAnswer: Paris\n###\n" +
-    "Q2: 2+2\nBasic addition.\nAnswer: 4"
+  "Q1: capital of France\nChoices: A) Paris B) Lyon C) Nice\nParis is the capital because...\nAnswer: Paris\n###\n" +
+    "Q2: 2+2\nChoices: True/False (it's a fill-in, not really — arithmetic)\nBasic addition.\nAnswer: 4"
 );
 assert.equal(multi.length, 2);
 assert.equal(multi[0].question, "Q1: capital of France");
+assert.equal(multi[0].choices, "A) Paris B) Lyon C) Nice");
 assert.equal(multi[0].answer, "Paris");
 assert.match(multi[0].explanation, /Paris is the capital/);
 assert.equal(multi[1].answer, "4");
+
+// a block missing the Choices: line still parses fine (fallback, same as
+// every other format-compliance gap in this file) — choices just stays null
+const noChoicesLine = parsePageCheckReply("Q1: capital of France\nParis is the capital.\nAnswer: Paris");
+assert.equal(noChoicesLine[0].choices, null);
+assert.equal(noChoicesLine[0].answer, "Paris");
 
 assert.equal(parsePageCheckReply("No delimiter here at all, just plain prose."), null);
 assert.equal(parsePageCheckReply(""), null);
@@ -76,10 +101,11 @@ assert.equal(parsePageCheckReply(""), null);
 // A single ###-less block still parses when it carries an Answer: line
 // (one-question page = success, not a format failure)…
 const single = parsePageCheckReply(
-  "Q1: capital of France\nParis is the capital because...\nAnswer: Paris"
+  "Q1: capital of France\nChoices: A) Paris B) Lyon\nParis is the capital because...\nAnswer: Paris"
 );
 assert.equal(single.length, 1);
 assert.equal(single[0].question, "Q1: capital of France");
+assert.equal(single[0].choices, "A) Paris B) Lyon");
 assert.equal(single[0].answer, "Paris");
 // …but prose without one ("no questions found") stays a format failure.
 assert.equal(parsePageCheckReply("There are no questions on this page."), null);

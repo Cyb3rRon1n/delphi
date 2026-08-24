@@ -15,6 +15,19 @@ const INSTRUCTIONS = Object.freeze({
     "its own final line by itself, write 'Answer: <the answer>'.",
 });
 
+// Shared by every prompt builder below (text, image, page-check): asks the
+// model to restate the question and name its answer format before it
+// answers, rather than answering straight off — catches a misread (a messy
+// DOM chunk, a tight image crop) before it becomes a wrong answer, the same
+// reason a person reads all the options before picking one. The two labeled
+// lines this produces are what parseIdentifiedReply()/parsePageCheckReply()
+// pull off the front of a reply so the UI can show them as their own fields.
+const IDENTIFY_LINES =
+  "start with exactly these two labeled lines, each on its own line: " +
+  "'Question: <the question text>' then 'Choices: <every multiple-choice " +
+  "option, or True/False, or, for fill-in-the-blank, a note that it's " +
+  "fill-in-the-blank and what fills it>'. Use those to determine the best answer, then continue";
+
 export function buildPrompt(questionText, mode = MODES.EXPLAIN) {
   if (!questionText || !questionText.trim()) {
     throw new Error("buildPrompt: questionText is empty");
@@ -25,7 +38,7 @@ export function buildPrompt(questionText, mode = MODES.EXPLAIN) {
     "(this is self-study, not a live exam). The learner selected the " +
     "following practice question from a page:";
 
-  return `${preamble}\n\n---\n${questionText.trim()}\n---\n\n${INSTRUCTIONS[mode]}`;
+  return `${preamble}\n\n---\n${questionText.trim()}\n---\n\nFirst, ${IDENTIFY_LINES} below.\n\n${INSTRUCTIONS[mode]}`;
 }
 
 // Same idea, but for a captured image with no separately-extracted text —
@@ -34,12 +47,42 @@ export function buildImagePrompt(mode = MODES.EXPLAIN) {
   const preamble =
     "You are a study assistant helping a learner practice for themselves " +
     "(this is self-study, not a live exam). The attached image contains a " +
-    "practice question — read the question and any answer choices directly from it. " +
-    "Use the same format as a text question: one line on why the correct choice is right, " +
-    "one short line per incorrect choice explaining briefly why it's wrong, then on its own " +
-    "final line write 'Answer: <the answer>'.";
+    `practice question. Read directly off the image and ${IDENTIFY_LINES} ` +
+    "below in the same format as a text question: one line on why the " +
+    "correct choice is right, one short line per incorrect choice " +
+    "explaining briefly why it's wrong, then on its own final line write " +
+    "'Answer: <the answer>'.";
 
   return `${preamble}\n\n${INSTRUCTIONS[mode]}`;
+}
+
+// Pulls the "Question:"/"Choices:" identification lines the prompts above
+// ask for off the front of the reply, leaving the rest for parseReply. Used
+// for both text (selection/auto-detect) and image (region-capture) replies —
+// same lead-in shape either way. Anchored to the very start (^) — these are
+// only meaningful as the lead-in the prompt asked for, not text that happens
+// to say "Question:" mid-reply. Falls back gracefully (null fields, whole
+// text still parsed for explanation/answer) if the model didn't follow the
+// format, same as every other format-compliance fallback in this file.
+const QUESTION_LINE = /^\s*Question\s*:\s*(.+?)\s*\n+/i;
+const CHOICES_LINE = /^\s*Choices\s*:\s*(.+?)\s*\n+/i;
+export function parseIdentifiedReply(rawText) {
+  let text = (rawText || "").trim();
+  let question = null;
+  let choices = null;
+
+  const qMatch = text.match(QUESTION_LINE);
+  if (qMatch) {
+    question = qMatch[1].trim();
+    text = text.slice(qMatch[0].length);
+  }
+  const cMatch = text.match(CHOICES_LINE);
+  if (cMatch) {
+    choices = cMatch[1].trim();
+    text = text.slice(cMatch[0].length);
+  }
+
+  return { question, choices, ...parseReply(text) };
 }
 
 // Whole-tab screenshot that may contain several questions at once (e.g. a
@@ -64,6 +107,8 @@ export function buildPageCheckPrompt(mode = MODES.EXPLAIN) {
   const format =
     "Format your reply as one block per question, in this exact shape, with no extra text " +
     "before the first block or after the last: a one-line question label, then a newline, then " +
+    "'Choices: <every multiple-choice option, or True/False, or, for fill-in-the-blank, a note " +
+    "that it's fill-in-the-blank and what fills it>', then a newline, then " +
     (mode === MODES.ANSWER_ONLY
       ? "'Answer: <the answer>'"
       : "one short line on why the correct choice is right, one short line per incorrect choice " +
@@ -99,22 +144,29 @@ export function parseReply(rawText) {
 // plain text instead of the styled answer. Move it where the UI expects it.
 export function finalizeReply(parsed, mode) {
   if (mode === MODES.ANSWER_ONLY && !parsed.answer && parsed.explanation) {
-    return { explanation: null, answer: parsed.explanation };
+    return { ...parsed, explanation: null, answer: parsed.explanation };
   }
   return parsed;
 }
 
-// Splits a "Check this page" reply into one {question, explanation, answer}
-// per question, using the ### delimiter buildPageCheckPrompt asks for.
-// Returns null (not an empty array) if the model didn't follow the format —
-// the caller falls back to showing the raw reply as one blob rather than
-// losing content. A single block still counts when it carries an "Answer:"
-// line (a one-question page is a success, not a format failure); prose
-// without one ("no questions found") stays null so it's shown verbatim.
+// Splits a "Check this page" reply into one {question, choices, explanation,
+// answer} per question, using the ### delimiter buildPageCheckPrompt asks
+// for. Returns null (not an empty array) if the model didn't follow the
+// format — the caller falls back to showing the raw reply as one blob rather
+// than losing content. A single block still counts when it carries an
+// "Answer:" line (a one-question page is a success, not a format failure);
+// prose without one ("no questions found") stays null so it's shown verbatim.
 export function parsePageCheckReply(rawText) {
   const toEntry = (block) => {
     const [label, ...rest] = block.split("\n");
-    return { question: label.trim(), ...parseReply(rest.join("\n")) };
+    let body = rest.join("\n");
+    let choices = null;
+    const cMatch = body.match(CHOICES_LINE);
+    if (cMatch) {
+      choices = cMatch[1].trim();
+      body = body.slice(cMatch[0].length);
+    }
+    return { question: label.trim(), choices, ...parseReply(body) };
   };
   const blocks = (rawText || "")
     .split(/\n*###\n*/)

@@ -3,7 +3,7 @@ import {
   buildImagePrompt,
   buildPageCheckPrompt,
   parsePageCheckReply,
-  parseReply,
+  parseIdentifiedReply,
   finalizeReply,
 } from "./lib/prompt-template.js";
 import { generate, getSettings } from "./providers/index.js";
@@ -99,7 +99,7 @@ async function withKeepAlive(run) {
 async function runGenerate(mode, run) {
   try {
     const reply = await withKeepAlive(run);
-    return { mode, ...finalizeReply(parseReply(reply), mode) };
+    return { mode, ...finalizeReply(parseIdentifiedReply(reply), mode) };
   } catch (err) {
     return { error: err.message };
   }
@@ -153,7 +153,7 @@ function snippet(text, max = 140) {
 // result still goes to the shared bottom-right panel via broadcast.
 async function report(tabId, question, result) {
   await api.tabs.sendMessage(tabId, { type: "DELPHI_RESULT", ...result }).catch(() => {});
-  await pushHistory(tabId, { question, ...result });
+  await pushHistory(tabId, { ...result, question });
 }
 
 async function runForText(tabId, text) {
@@ -162,7 +162,10 @@ async function runForText(tabId, text) {
     await ensureContentScript(tabId);
     await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
     const result = await explainText(text);
-    await report(tabId, snippet(text), result);
+    // The model's restated question (see parseIdentifiedReply) is usually a
+    // cleaner label than the raw selection, which can carry page clutter —
+    // fall back to the raw text if the model didn't identify one.
+    await report(tabId, snippet(result.question || text), result);
   } catch (err) {
     await report(tabId, snippet(text), { error: err.message });
   } finally {
@@ -176,7 +179,11 @@ async function runForImage(tabId, imageDataUrl) {
     await ensureContentScript(tabId);
     await api.tabs.sendMessage(tabId, { type: "DELPHI_SHOW" });
     const result = await explainImage(imageDataUrl);
-    await report(tabId, "[captured image]", result);
+    // The identified-question line (see parseIdentifiedReply) makes a much more
+    // useful history label than the static placeholder — snippet() keeps it
+    // from blowing out the collapsed <summary> row if it's a long question.
+    const label = result.question ? snippet(result.question) : "[captured image]";
+    await report(tabId, label, result);
   } catch (err) {
     await report(tabId, "[captured image]", { error: err.message });
   } finally {
@@ -349,7 +356,7 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // batch, await each one before starting the next.
   if (msg.type === "DELPHI_EXPLAIN_TEXT" && tabId) {
     explainText(msg.text, msg.mode).then((result) => {
-      pushHistory(tabId, { question: snippet(msg.text), ...result });
+      pushHistory(tabId, { ...result, question: snippet(result.question || msg.text) });
       sendResponse(result);
     });
     return true; // keep the message channel open for the async response

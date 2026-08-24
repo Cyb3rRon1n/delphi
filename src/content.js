@@ -41,6 +41,10 @@
       .panel .answer-label { all: initial; display: block; font: 10px system-ui, sans-serif;
         text-transform: uppercase; letter-spacing: 0.06em; color: #94e2d5; margin-bottom: 3px; }
       .panel .answer-value { all: initial; display: block; font: 700 15px system-ui, sans-serif; color: #cdd6f4; }
+      .panel .field { all: initial; display: block; margin: 0 0 8px; }
+      .panel .field-label { all: initial; display: block; font: 10px system-ui, sans-serif;
+        text-transform: uppercase; letter-spacing: 0.06em; color: #94e2d5; margin-bottom: 3px; }
+      .panel .field-value { all: initial; display: block; font: 13px/1.4 system-ui, sans-serif; color: #cdd6f4; white-space: pre-wrap; }
       .panel .answer-only-line { all: initial; display: block; background: #313244; border-radius: 6px;
         padding: 8px 10px; margin: 0 0 8px; font: 14px system-ui, sans-serif; color: #cdd6f4; }
       .panel .answer-only-line .answer-label { all: initial; display: inline; font: 700 11px system-ui, sans-serif;
@@ -114,6 +118,10 @@
       .auto-card .answer-label { all: initial; display: block; font: 9px system-ui, sans-serif;
         text-transform: uppercase; letter-spacing: 0.06em; color: #94e2d5; margin-bottom: 2px; }
       .auto-card .answer-value { all: initial; display: block; font: 700 13px system-ui, sans-serif; color: #cdd6f4; }
+      .auto-card .field { all: initial; display: block; margin: 0 0 6px; }
+      .auto-card .field-label { all: initial; display: block; font: 9px system-ui, sans-serif;
+        text-transform: uppercase; letter-spacing: 0.06em; color: #94e2d5; margin-bottom: 2px; }
+      .auto-card .field-value { all: initial; display: block; font: 12px/1.4 system-ui, sans-serif; color: #cdd6f4; white-space: pre-wrap; }
       .auto-card .answer-only-line { all: initial; display: block; background: #313244; border-radius: 6px;
         padding: 6px 8px; margin: 0 0 6px; font: 13px system-ui, sans-serif; color: #cdd6f4; }
       .auto-card .answer-only-line .answer-label { all: initial; display: inline; font: 700 10px system-ui, sans-serif;

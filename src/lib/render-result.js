@@ -7,6 +7,12 @@ export function buildResultBody(result) {
     body.appendChild(p);
     return body;
   }
+  // Question isn't shown here as its own field — the history entry / panel
+  // title already carries it (see background.js's report()); repeating it
+  // in the body would just duplicate what's already the visible label.
+  if (result.choices) {
+    body.appendChild(field("Choices", result.choices));
+  }
   if (result.explanation) {
     for (const line of result.explanation.split(/\n+/)) {
       const trimmed = line.trim();
@@ -56,6 +62,19 @@ export function buildResultBody(result) {
     }
   }
   return body;
+}
+
+function field(label, value) {
+  const wrap = document.createElement("div");
+  wrap.className = "field";
+  const l = document.createElement("div");
+  l.className = "field-label";
+  l.textContent = label;
+  const v = document.createElement("div");
+  v.className = "field-value";
+  v.textContent = value;
+  wrap.append(l, v);
+  return wrap;
 }
 
 function extractChoice(answerText) {
