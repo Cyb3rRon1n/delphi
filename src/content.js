@@ -295,6 +295,22 @@
 
   const debouncedScan = debounce(scan, 800);
 
+  // Coalesces repositionAll to once per animation frame — the native scroll
+  // event it's wired to can fire dozens of times a second, and repositionAll
+  // does a getBoundingClientRect() per tracked block (up to dozens on a real
+  // multi-question page), so calling it straight off every scroll tick was
+  // real, needless layout-thrash cost on exactly the kind of page auto-detect
+  // is supposed to be the resource-light option for.
+  let repositionScheduled = false;
+  function scheduleReposition() {
+    if (repositionScheduled) return;
+    repositionScheduled = true;
+    requestAnimationFrame(() => {
+      repositionScheduled = false;
+      repositionAll();
+    });
+  }
+
   async function startAuto() {
     autoHost.style.display = "block";
     if (!detectFns) {
@@ -304,8 +320,8 @@
     if (!autoObserver) {
       autoObserver = new MutationObserver(debouncedScan);
       autoObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
-      window.addEventListener("scroll", repositionAll, true);
-      window.addEventListener("resize", repositionAll);
+      window.addEventListener("scroll", scheduleReposition, true);
+      window.addEventListener("resize", scheduleReposition);
     }
   }
 
@@ -315,8 +331,8 @@
       autoObserver.disconnect();
       autoObserver = null;
     }
-    window.removeEventListener("scroll", repositionAll, true);
-    window.removeEventListener("resize", repositionAll);
+    window.removeEventListener("scroll", scheduleReposition, true);
+    window.removeEventListener("resize", scheduleReposition);
     for (const state of blocks.values()) {
       state.btn?.remove();
       state.card?.remove();
