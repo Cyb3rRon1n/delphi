@@ -241,6 +241,12 @@ async function captureFullPage(tabId, windowId) {
   while (positions[positions.length - 1] + viewportHeight < scrollHeight && positions.length < MAX_PAGE_CHECK_SHOTS) {
     positions.push(positions[positions.length - 1] + viewportHeight);
   }
+  // Temporary diagnostic — check the service worker console after running
+  // "Check this page": if shots=1 on a page with visibly more content below
+  // the fold, getPageMetrics's document.documentElement.scrollHeight isn't
+  // seeing whatever's actually scrolling (a plain overflow:auto div, not the
+  // window or an iframe — the known, documented gap in that function).
+  console.log("[Delphi] captureFullPage:", { scrollHeight, viewportHeight, shots: positions.length });
 
   const shots = [];
   for (const y of positions) {
