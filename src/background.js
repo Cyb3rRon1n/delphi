@@ -207,9 +207,16 @@ async function runForImage(tabId, imageDataUrl) {
 // captureVisibleTab only ever grabs the visible viewport — there's no
 // single-call "whole scrollable page" screenshot API. So: scroll to each
 // section, capture, repeat, then restore the original scroll position.
-// Capped at MAX_SHOTS — more images means proportionally longer processing
-// on a local model, which is already the slow part (see withKeepAlive).
-const MAX_PAGE_CHECK_SHOTS = 8;
+// Capped at MAX_PAGE_CHECK_SHOTS — more images means proportionally longer
+// processing on a local model, which is already the slow part (see
+// withKeepAlive). Was 8, which silently capped capture at whatever fits in
+// the first ~8 viewport heights — confirmed live on a real 50-question page
+// (all 50 statically laid out on one scrollable page, not paginated): only
+// the top ~22 ever made it into an image, the other 28 were mechanically
+// invisible to the model no matter how the prompt/retry logic behaved.
+// Raised with headroom for that case; if a page still needs more, raise
+// this further (and reconsider MAX_ROUNDS below together with it).
+const MAX_PAGE_CHECK_SHOTS = 25;
 
 // allFrames: the page that doesn't scroll (or the top frame reporting a
 // tiny scrollHeight) is a real, common case — LMS/course-player content is
@@ -300,7 +307,15 @@ async function checkPage(tabId) {
         if (allParsed.length) break; // already have partial results — don't keep hammering on a failed round
         continue; // total failure with nothing yet — worth one more try
       }
-      const newOnes = parsed.filter((p) => !covered.includes(p.question));
+      // Require an actual answer, same guard parsePageCheckReply already
+      // applies to the single-block case (entry.answer ? [entry] : null).
+      // Without this, a question whose block got truncated mid-reply before
+      // reaching its "Answer:" line (identify lines only) still counted as
+      // "covered" — permanently excluded from every later round's retry,
+      // so it was stuck forever with a question/choices but no answer or
+      // explanation. Confirmed live: several questions on a real 50-question
+      // page rendered with Question/Choices but no reveal button.
+      const newOnes = parsed.filter((p) => p.answer && !covered.includes(p.question));
       if (newOnes.length === 0) break; // nothing new this round — model thinks it's done, or stuck
       allParsed.push(...newOnes);
     }
