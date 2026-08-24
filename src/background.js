@@ -218,6 +218,16 @@ async function runForImage(tabId, imageDataUrl) {
 // this further (and reconsider MAX_ROUNDS below together with it).
 const MAX_PAGE_CHECK_SHOTS = 25;
 
+// Sent to the model in chunks of this many images per generate() call, not
+// all MAX_PAGE_CHECK_SHOTS at once — confirmed live: the very first run
+// after raising MAX_PAGE_CHECK_SHOTS from 8 to 25 failed outright with a raw
+// "kErrorUnknown" (an opaque Chrome on-device-model failure, no useful
+// detail), which never happened at 8. 8 is the last confirmed-working count
+// for chrome-ai's on-device model, so that's the per-call ceiling; capture
+// still goes up to MAX_PAGE_CHECK_SHOTS, it's just spread across more,
+// smaller calls instead of one oversized one.
+const SHOTS_PER_CALL = 8;
+
 // allFrames: the page that doesn't scroll (or the top frame reporting a
 // tiny scrollHeight) is a real, common case — LMS/course-player content is
 // often rendered inside an iframe with its own internal scroll, and the top
@@ -290,34 +300,41 @@ async function checkPage(tabId) {
     // each round tells the model (via buildPageCheckPrompt's alreadyCovered)
     // which questions it already answered and asks it to continue, so each
     // attempt is a genuinely different prompt, not a re-roll of the same
-    // one. Stops as soon as a round adds nothing new, or after MAX_ROUNDS —
-    // a hard cap so a model stuck in a "found nothing, formatted nothing"
-    // loop can't run forever (up to MAX_ROUNDS attempts total on a total
-    // format failure, not just one retry, since each is cheap to bound and
-    // there's no partial content being wasted by trying again).
-    const MAX_ROUNDS = 4;
+    // one. Stops as soon as a round adds nothing new, or after
+    // MAX_ROUNDS_PER_CHUNK — a hard cap so a model stuck in a "found
+    // nothing, formatted nothing" loop can't run forever on one chunk.
+    // Scoped per shot-chunk (see SHOTS_PER_CALL above), not the whole
+    // capture: a bad/incomplete round only costs a retry of its own chunk,
+    // not every chunk that already succeeded.
+    const MAX_ROUNDS_PER_CHUNK = 2;
+    const shotChunks = [];
+    for (let i = 0; i < shots.length; i += SHOTS_PER_CALL) shotChunks.push(shots.slice(i, i + SHOTS_PER_CALL));
+
     let allParsed = [];
     let lastReply = "";
-    for (let round = 0; round < MAX_ROUNDS; round++) {
-      const covered = allParsed.map((p) => p.question);
-      const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode, covered), shots));
-      lastReply = reply;
-      const parsed = parsePageCheckReply(reply);
-      if (!parsed) {
-        if (allParsed.length) break; // already have partial results — don't keep hammering on a failed round
-        continue; // total failure with nothing yet — worth one more try
+    for (const chunk of shotChunks) {
+      const parsedBeforeChunk = allParsed.length;
+      for (let round = 0; round < MAX_ROUNDS_PER_CHUNK; round++) {
+        const covered = allParsed.map((p) => p.question);
+        const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode, covered), chunk));
+        lastReply = reply;
+        const parsed = parsePageCheckReply(reply);
+        if (!parsed) {
+          if (allParsed.length > parsedBeforeChunk) break; // already got something from this chunk
+          continue; // total failure with nothing yet from this chunk — worth one more try
+        }
+        // Require an actual answer, same guard parsePageCheckReply already
+        // applies to the single-block case (entry.answer ? [entry] : null).
+        // Without this, a question whose block got truncated mid-reply before
+        // reaching its "Answer:" line (identify lines only) still counted as
+        // "covered" — permanently excluded from every later round's retry,
+        // so it was stuck forever with a question/choices but no answer or
+        // explanation. Confirmed live: several questions on a real 50-question
+        // page rendered with Question/Choices but no reveal button.
+        const newOnes = parsed.filter((p) => p.answer && !covered.includes(p.question));
+        if (newOnes.length === 0) break; // nothing new this round — model thinks it's done, or stuck
+        allParsed.push(...newOnes);
       }
-      // Require an actual answer, same guard parsePageCheckReply already
-      // applies to the single-block case (entry.answer ? [entry] : null).
-      // Without this, a question whose block got truncated mid-reply before
-      // reaching its "Answer:" line (identify lines only) still counted as
-      // "covered" — permanently excluded from every later round's retry,
-      // so it was stuck forever with a question/choices but no answer or
-      // explanation. Confirmed live: several questions on a real 50-question
-      // page rendered with Question/Choices but no reveal button.
-      const newOnes = parsed.filter((p) => p.answer && !covered.includes(p.question));
-      if (newOnes.length === 0) break; // nothing new this round — model thinks it's done, or stuck
-      allParsed.push(...newOnes);
     }
 
     if (allParsed.length) {
