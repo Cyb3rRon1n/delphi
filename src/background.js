@@ -315,7 +315,15 @@ async function checkPage(tabId) {
     for (const chunk of shotChunks) {
       const parsedBeforeChunk = allParsed.length;
       for (let round = 0; round < MAX_ROUNDS_PER_CHUNK; round++) {
-        const covered = allParsed.map((p) => p.question);
+        // Scoped to this chunk's own results, not the global allParsed —
+        // each chunk only shows the model a different slice of screenshots,
+        // so telling it "you already answered these" for questions from a
+        // different chunk (not visible in the current images at all) is a
+        // contradictory instruction that broke format compliance entirely
+        // from chunk 2 onward. Confirmed live: every chunk after the first
+        // came back as an unparseable reply, and only the last chunk's raw
+        // text survived (as one undivided fallback blob with no answers).
+        const covered = allParsed.slice(parsedBeforeChunk).map((p) => p.question);
         const reply = await withKeepAlive(() => generate(buildPageCheckPrompt(settings.mode, covered), chunk));
         lastReply = reply;
         const parsed = parsePageCheckReply(reply);
