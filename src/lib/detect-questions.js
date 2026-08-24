@@ -11,19 +11,21 @@ export function looksLikeQuestion(text) {
   // A choice marker at the start of the text, or preceded by any whitespace —
   // covers both one-per-line lists and inline "A) x B) y" on a single line,
   // and numbered choices ("1. x 2. y") alongside lettered ones.
-  const choiceLines = t.match(/(^|\s)(?:[A-Da-d]|[1-9])[.):]\s+\S/g) || [];
+  const CHOICE_RE = /(^|\s)(?:[A-Da-d]|[1-9])[.):]\s+\S/g;
+  const choiceLines = t.match(CHOICE_RE) || [];
   if (choiceLines.length >= 2) {
-    // If there are 3+ choice lines and the question mark appears after the
-    // choice patterns (or there's no clear leading question mark), it's likely
-    // an answer key, not a practice question.
+    // If there are 3+ choice lines and the question mark doesn't precede most
+    // of them, it's likely an answer key, not a practice question.
     if (choiceLines.length >= 3) {
-      // Answer keys list choices with no question before them — the '?'
-      // (if any) sits after the choices. Compare positions, don't split on
-      // punctuation: a split on [.!?] can never leave a '?' in fragment[0],
-      // which made every normal 3+-choice question look like an answer key.
+      // Answer keys list choices with no question before them — the '?' (if
+      // any) sits after the choices. Compare against how many choice matches
+      // follow the '?', not just the first match: a leading question number
+      // ("1. What is...?") itself matches CHOICE_RE and sits before the '?',
+      // which made every normal numbered question look like an answer key
+      // when only the first match's position was checked.
       const qIdx = t.indexOf('?');
-      const firstChoiceIdx = t.search(/(^|\s)(?:[A-Da-d]|[1-9])[.):]\s+\S/);
-      if (qIdx === -1 || qIdx > firstChoiceIdx) return false;
+      const afterQ = [...t.matchAll(CHOICE_RE)].filter((m) => m.index >= qIdx).length;
+      if (qIdx === -1 || afterQ < 2) return false;
     }
     return true;
   }

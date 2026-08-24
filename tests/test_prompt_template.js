@@ -157,6 +157,15 @@ assert.equal(
   looksLikeQuestion("1) A 2) B 3) C 4) D\nWhat is the correct choice?"),
   false
 ); // answer-key shape: choices precede the '?'
+assert.equal(
+  looksLikeQuestion(
+    "1.\nIn what stage of the client-trainer relationship are health-history " +
+      "and lifestyle questionnaires administered?\na. Rapport Stage\nb. Investigative Stage\n" +
+      "c. Planning Stage\nd. Action Stage"
+  ),
+  true
+); // regression: a leading question-number label ("1.") must not be mistaken for a
+   // preceding answer-key choice — real-world numbered-question format from tests.com
 assert.equal(looksLikeQuestion("A) 3 B) 4 C) 5"), false); // no '?'
 assert.equal(looksLikeQuestion("What is your favorite color?"), false); // no choices
 assert.equal(looksLikeQuestion("Just some ordinary paragraph text with no question."), false);

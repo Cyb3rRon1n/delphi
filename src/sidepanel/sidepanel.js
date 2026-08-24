@@ -81,6 +81,23 @@ async function refreshHistory() {
   renderHistory(currentEntries);
 }
 
+// Newest-first overall, but a batch push (check-page's numbered questions,
+// sharing one batchId — see pushHistoryMany in background.js) stays in its
+// original ascending order within itself instead of being flipped entry by
+// entry, so a #1..#9 batch reads #1 at top going down rather than #9 first.
+function orderForDisplay(entries) {
+  const groups = [];
+  for (const entry of entries) {
+    const last = groups[groups.length - 1];
+    if (entry.batchId != null && last?.[0].batchId === entry.batchId) {
+      last.push(entry);
+    } else {
+      groups.push([entry]);
+    }
+  }
+  return groups.reverse().flat();
+}
+
 // Collapsed by default (native <details>, no custom JS needed) — a full
 // explanation per entry was a lot of text to scroll past just to browse
 // history. The most recent entry stays open, since that's usually the one
@@ -95,7 +112,7 @@ function renderHistory(entries) {
   historyEl.innerHTML = "";
   emptyEl.style.display = entries.length ? "none" : "block";
   let lastHighlighted = null;
-  [...entries].reverse().forEach((entry, i) => {
+  orderForDisplay(entries).forEach((entry, i) => {
     const details = document.createElement("details");
     details.className = "entry";
     details.dataset.id = entry.id;

@@ -126,7 +126,13 @@ const HISTORY_LIMIT = 50;
 async function pushHistoryMany(tabId, entries) {
   const key = `history:${tabId}`;
   const stored = await api.storage.session.get(key);
-  const stamped = entries.map((e) => ({ id: crypto.randomUUID(), ts: Date.now(), ...e }));
+  // A multi-entry push (e.g. check-page's numbered questions) gets a shared
+  // batchId so the side panel can keep the batch in ascending push order
+  // (#1 first) while still reversing batches themselves newest-first —
+  // plain single pushes get none, so their per-entry newest-first order is
+  // untouched. See renderHistory() in sidepanel.js.
+  const batchId = entries.length > 1 ? crypto.randomUUID() : undefined;
+  const stamped = entries.map((e) => ({ id: crypto.randomUUID(), ts: Date.now(), batchId, ...e }));
   const updated = [...(stored[key] || []), ...stamped].slice(-HISTORY_LIMIT);
   await api.storage.session.set({ [key]: updated });
 }
