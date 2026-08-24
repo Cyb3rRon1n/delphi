@@ -37,16 +37,35 @@ export function looksLikeQuestion(text) {
 
 const CANDIDATE_SELECTOR = "p, div, li, td, fieldset, section";
 
+// DOM-aware companion to looksLikeQuestion, for a real gap pure text
+// matching can't cover: choices with no letter/number prefix at all.
+// Confirmed live on testprepreview.com's ASVAB sample questions — choices
+// rendered as plain <li> text ("1:5:5:2", or bare words like "belittled"),
+// nothing for CHOICE_RE to match, so looksLikeQuestion never fires no
+// matter how the regex is tuned. A '?' immediately followed by a short list
+// is a strong structural signal of multiple-choice independent of any
+// lettering convention — capped at 8 items so a big unrelated list (nav,
+// FAQ) elsewhere in a large candidate doesn't false-match; the existing
+// smallest-element/ancestor-skip logic below still prefers the actual
+// question+list over that larger container whenever one exists.
+function hasListedChoices(el) {
+  const text = el.innerText ?? el.textContent ?? "";
+  const t = text.trim();
+  if (t.length < 15 || t.length > 1000 || !/\?/.test(t)) return false;
+  const list = el.querySelector("ul, ol");
+  if (!list) return false;
+  const items = list.querySelectorAll(":scope > li");
+  return items.length >= 2 && items.length <= 8;
+}
+
 // Returns the smallest elements under root whose text looks like a question
 // — an ancestor of a matching element is skipped so a whole page/section
 // container doesn't get flagged alongside the real question inside it.
 export function findQuestionBlocks(root) {
   const candidates = Array.from(root.querySelectorAll(CANDIDATE_SELECTOR));
+  const matches = (el) => looksLikeQuestion(el.innerText ?? el.textContent ?? "") || hasListedChoices(el);
   return candidates.filter((el) => {
-    const text = el.innerText ?? el.textContent ?? "";
-    if (!looksLikeQuestion(text)) return false;
-    return !Array.from(el.querySelectorAll(CANDIDATE_SELECTOR)).some((child) =>
-      looksLikeQuestion(child.innerText ?? child.textContent ?? "")
-    );
+    if (!matches(el)) return false;
+    return !Array.from(el.querySelectorAll(CANDIDATE_SELECTOR)).some(matches);
   });
 }
