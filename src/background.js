@@ -312,7 +312,8 @@ async function checkPage(tabId) {
 
     let allParsed = [];
     let lastReply = "";
-    for (const chunk of shotChunks) {
+    // Returns true if this chunk contributed at least one answered question.
+    async function runChunk(chunk) {
       const parsedBeforeChunk = allParsed.length;
       for (let round = 0; round < MAX_ROUNDS_PER_CHUNK; round++) {
         // Scoped to this chunk's own results, not the global allParsed —
@@ -343,6 +344,24 @@ async function checkPage(tabId) {
         if (newOnes.length === 0) break; // nothing new this round — model thinks it's done, or stuck
         allParsed.push(...newOnes);
       }
+      return allParsed.length > parsedBeforeChunk;
+    }
+
+    // A chunk that used up its whole MAX_ROUNDS_PER_CHUNK budget without
+    // producing anything used to be permanently skipped — confirmed live on
+    // a real 50-question page (14 shots, 2 chunks): chunk 1 (roughly
+    // questions 1-30) failed both its rounds and was never revisited, chunk
+    // 2 (roughly 30-50) succeeded, and the result showed only the back half
+    // of the page. One more pass over just the chunks that came back empty,
+    // now that every other chunk is already done, catches a chunk that
+    // failed from transient model flakiness rather than losing that whole
+    // slice of the page for good.
+    const emptyChunks = [];
+    for (const chunk of shotChunks) {
+      if (!(await runChunk(chunk))) emptyChunks.push(chunk);
+    }
+    for (const chunk of emptyChunks) {
+      await runChunk(chunk);
     }
 
     if (allParsed.length) {
