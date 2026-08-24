@@ -32,33 +32,22 @@ export function buildResultBody(result) {
       p.append(label, document.createTextNode(result.answer));
       body.appendChild(p);
     } else {
+      // The result is already fully computed by the time this renders (no
+      // actual "still thinking" state ever exists here) — the button used to
+      // start labeled "Thinking…", which read as permanently stuck on a
+      // 20/50-question check-page batch full of them. It also only showed
+      // the revealed choice for 300ms before auto-hiding again, so reading
+      // it took repeated clicking. Now: labeled "Reveal answer" up front,
+      // and staying revealed once clicked is a real reveal, not a peek.
       const reveal = document.createElement("button");
-      reveal.textContent = "Thinking…";
+      reveal.textContent = "Reveal answer";
       reveal.className = "thinking-btn";
-      const answerBox = document.createElement("div");
-      answerBox.className = "answer";
-      const label = document.createElement("div");
-      label.className = "answer-label";
-      label.textContent = "Answer";
-      const value = document.createElement("div");
-      value.className = "answer-value";
-      answerBox.append(label, value);
       reveal.addEventListener("click", () => {
-        reveal.textContent = "…";
+        reveal.textContent = extractChoice(result.answer);
         reveal.disabled = true;
-        const choice = extractChoice(result.answer);
-        value.textContent = choice;
-        reveal.textContent = choice;
-        reveal.disabled = false;
         reveal.classList.add("revealed");
-        setTimeout(() => {
-          reveal.classList.remove("revealed");
-          reveal.textContent = "Reveal answer";
-          reveal.disabled = false;
-        }, 300);
       });
       body.appendChild(reveal);
-      body.appendChild(answerBox);
     }
   }
   return body;
