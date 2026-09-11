@@ -2,3 +2,8 @@ node_modules/
 *.log
 .DS_Store
 .dev-profile/
+
+# Secrets - env files with real API keys, never committed.
+.env
+.env.*
+!.env.example
